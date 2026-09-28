@@ -195,7 +195,19 @@ class ReachResearch:
             "ok": True,
             "channel": channel,
             "query": query,
-            "items": [{"id": item.id, "url": item.url, "title": item.title} for item in items],
+            "items": [
+                {
+                    "id": item.id,
+                    "url": item.url,
+                    "source": item.source,
+                    "title": item.title,
+                    "content": item.content,
+                    "timestamp": item.timestamp,
+                    "topic": item.topic,
+                    "fetched_at": item.fetched_at,
+                }
+                for item in items
+            ],
             "stored": saved,
         }
 
@@ -252,9 +264,9 @@ def extract_sources(text: str) -> list[str]:
 
 
 def collect_sources(channel: str, output: str) -> list[str]:
-    """通道相关的来源抽取：GitHub 的 TSV 要先把 owner/repo 还原成地址。"""
+    """通道相关的来源抽取：GitHub 只认结果行，描述里夹带的外链不算来源。"""
     if channel == "github":
-        return _dedupe(list(_github_sources(output)) + extract_sources(output))
+        return _github_sources(output)
     return extract_sources(output)
 
 
@@ -268,16 +280,19 @@ def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[
     if blocks:
         return blocks
     digest = output.strip()
-    return [
-        ResearchItem(
-            source=channel,
-            url=url,
-            content=_row_for(channel, url, output) or digest,
-            query=query,
-            topic=topic,
+    items = []
+    for url in collect_sources(channel, output):
+        items.append(
+            ResearchItem(
+                source=channel,
+                url=url,
+                title="/".join(url.rstrip("/").split("/")[-2:]) if channel == "github" else "",
+                content=_row_for(channel, url, output) or digest,
+                query=query,
+                topic=topic,
+            )
         )
-        for url in collect_sources(channel, output)
-    ]
+    return items
 
 
 def _row_for(channel: str, url: str, output: str) -> str:

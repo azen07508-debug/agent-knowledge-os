@@ -197,6 +197,33 @@ store.search("热层", topic="memory")           # 按关键词/主题查材料
 
 `ReachResearch.research()` 同时做两件事：材料写进 `ResearchStore`，结论写进 `11-Research`。
 
+## Research Agent（Phase 5）
+
+`agents/researcher.py`：`搜索 → 抓取 → 去重 → 分类 → 提取事实/观点/证据 → Topic Candidate`。
+
+```python
+from agents import ResearcherAgent
+
+agent = ResearcherAgent()                       # 不联网构造；也可注入 reach=ReachResearch(...)、extractor=...
+agent.run("obsidian agent memory", {"channel": "github", "limit": 5, "topic": "memory"})
+agent.run("记忆分层", {"materials": [...]})      # 用现成材料跑，不触发网络
+# -> {"summary", "details", "candidates": [TopicCandidate...], "material_count", "errors", ...}
+```
+
+`runtime/topics.py` 负责数据模型与规则：
+
+| 环节 | 规则 |
+| --- | --- |
+| 去重 | 按 URL 去重；同标题的不同来源合并进同一候选 |
+| 分类 | 关键词表 `CATEGORIES`（记忆系统 / AI 工具 / 内容创作 / 平台运营 / 数据增长 / 未分类） |
+| 事实 | 同时命中「数字 + 计量词」的行（最多 5 条） |
+| 观点 | 含建议/应该/值得等信号词的行（最多 3 条） |
+| 证据 | 来源 URL + 首段摘录（最多 3 条） |
+| 置信度 | 规则抽取一律 `LOW`，候选 `status` 不写记忆，等复核 |
+
+- **候选不写记忆**：没经过复核的选题不是长期记忆；材料只进 `ResearchStore`。
+- 抽取规则可由构造参数 `extractor=` 覆盖（上层模型给出更强的抽取结果时）。
+
 ## 如何运行 demo
 
 ```bash

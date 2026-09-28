@@ -6,6 +6,7 @@ import pytest
 
 from runtime.reach_research import ReachResearch, extract_sources, parse_items
 from runtime.research_store import ResearchStore
+from runtime.topics import build_candidates
 
 WEB_OUTPUT = """\
 # 搜索结果
@@ -256,6 +257,28 @@ def test_parse_items_keeps_each_github_row_on_its_own_item(tmp_path):
     assert items["https://github.com/owner/alpha"].content == "owner/alpha\tThe alpha tool\tpublic\t2026-09-28"
     assert "beta" not in items["https://github.com/owner/alpha"].content
     assert items["https://github.com/owner/beta"].content.endswith("2026-09-28")
+
+
+def test_github_items_get_repo_name_as_title(tmp_path):
+    items = parse_items("github", "q", "owner/alpha\tThe alpha tool\tpublic\t2026-09-28")
+
+    assert items[0].title == "owner/alpha"
+
+
+def test_github_channel_ignores_links_inside_descriptions(tmp_path):
+    output = "owner/alpha\tSee https://obsidian.md for docs\tpublic\t2026-09-28\n"
+
+    fetched = make(tmp_path, runner=fake_runner(stdout=output)).fetch("q", channel="github")
+
+    assert fetched["sources"] == ["https://github.com/owner/alpha"]
+
+
+def test_freshness_falls_back_when_timestamp_is_not_a_date():
+    candidates = build_candidates(
+        [{"url": "https://a.com/1", "title": "T", "content": "x", "timestamp": "N/A", "fetched_at": "2026-09-28 10:00:00"}]
+    )
+
+    assert candidates[0].freshness == "2026-09-28"
 
 
 def test_harvest_stores_material_without_writing_memory(tmp_path):
