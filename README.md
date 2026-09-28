@@ -365,6 +365,7 @@ wf.publish(content_id)                          # 只发 APPROVED；走 XAdapter
 - 摘要/事实/观点沿用 `topics.extract` 规则，**证据摘录会覆盖事实行**（否则事实核查永远「无出处」）。
 - `publish()`：状态非 `APPROVED` → 拒绝并说明「未通过人审」；X 发送失败 → 状态保持不变；成功 → `APPROVED → SCHEDULED → PUBLISHED`，并记录 `platform_versions = {"X": "Thread"}`。
 - 走 `XAdapter`，不绕过（X API 不散落到工作流里）。
+- **已知问题（Phase 15 修）**：OpenCLI `post` 偶发 `TIMEOUT` 但实际已发出（首条真实推文 `2104696280136221102` 即如此，靠 `tweets` 列表人工对账补状态）。工作流现在如实报失败、状态停在 APPROVED——**不要盲目重试，先查 `opencli twitter tweets --limit 3` 是否已存在同文**；自动对账（TIMEOUT → 查列表 → 命中即补 PUBLISHED）归 Phase 15 PublishJob 的 attempts/结果判定。
 
 ## Human Review（Phase 12）
 
