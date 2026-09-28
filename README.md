@@ -383,6 +383,31 @@ request_changes(store, content_id, reviewer="admin", note="Hook 太平")  # REVI
 - `ContentObject` 新增 `ai_suggestions`（创建时由 Topic/Strategy 的理由生成）与 `review_notes`（只增不改的审核记录）。
 - 配套状态链：`DRAFT → REVIEW → APPROVED → SCHEDULED → PUBLISHED`（与 PLAN 12 一致）。
 
+## 国内平台层（Phase 13）
+
+`runtime/platform_adapter.py`：六个国内平台的统一适配契约（小红书 → 抖音 → B站 → 公众号 → 微博 → 视频号）。
+
+```python
+from runtime.platform_adapter import get_adapter
+
+adapter = get_adapter("xiaohongshu")            # douyin / bilibili / wechat_mp / weibo / channels
+draft = adapter.create_draft({"title": "…", "body": "…", "tags": ["AI"], "media": [], "content_id": "…"})
+adapter.validate(draft)                          # {"ok": …, "errors": […]}；标题/正文/标签字数上限按平台
+adapter.publish(draft)                           # 默认 dry_run：回显预览，不外发
+adapter.publish(draft, dry_run=False)            # 真实发布：必须有 backend，没配就如实 ok=False
+adapter.schedule(draft, "2026-10-01 09:00")      # 同样默认演练
+adapter.get_status(draft.id)                     # 平台侧状态（需 backend）
+adapter.get_analytics(draft.id)                  # 平台侧数据（需 backend）
+```
+
+| 设计 | 说明 |
+| --- | --- |
+| PLAN 接口映射 | `createDraft/create_draft`、`validate`、`publish`、`schedule`、`getStatus/get_status`、`getAnalytics/get_analytics`（Python 侧统一 snake_case，与 `XAdapter` 一致） |
+| 本地校验 | 标题/正文/标签上限是平台规格常量（`SPECS`，可被 `limits=` 覆盖）；视频平台（抖音/B站/视频号）必须有媒体，公众号/小红书/B站/视频号必须有标题 |
+| backend 契约 | 与 `XAdapter` 同一套：同名方法返回 `{"ok": …}`；**没配 backend 时真实 publish/schedule/getStatus/getAnalytics 返回 `ok=False` + 平台级提示**（各平台提示写明当前可用的接入方式），不假装成功 |
+| 演练闸门 | `dry_run=True` 是所有写操作默认值；演练先过 `validate`，失败连 backend 都不碰 |
+| 后端现状 | 六平台都还没接真实写后端：小红书可走 OpenCLI/xhs-cli（写未验证）、B站 bili-cli（投稿未接）、公众号/微博需开放平台凭据、视频号只有手工发布 |
+
 ## 如何运行 demo
 
 ```bash
