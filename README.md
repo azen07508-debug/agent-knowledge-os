@@ -339,14 +339,14 @@ adapter.schedule(text, at)
 | 设计 | 说明 |
 | --- | --- |
 | 后端可注入 | `backend` 需提供同名方法并返回 `{"ok": ...}`；**未配置时所有调用返回 `ok=False` + 明确提示**，不假装成功 |
-| 默认后端探测 | `default_x_adapter()`：`~/.agent-reach/config.yaml` 里有 `twitter_auth_token`/`twitter_ct0` 就自动接 `TwitterCliXBackend`，否则返回未配置 adapter；`ReachResearch` 与 `XWorkflow` 默认走它 |
+| 默认后端探测 | `default_x_adapter()`：优先 OpenCLI（浏览器登录态，`opencli` 在 PATH 即可用），其次 `~/.agent-reach/config.yaml` 的 twitter-cli 凭据；都没有则返回未配置 adapter。`ReachResearch` 与 `XWorkflow` 默认走它 |
 | 默认演练 | 写操作默认 `dry_run=True`，真实发送必须显式 `dry_run=False`（对外操作由上层把关） |
 | X 规则 | 单条 ≤280、Thread ≤20 条、空内容拒绝，校验在后端之前 |
 | 字段归一化 | 后端返回的 `id_str/screen_name/full_text/created_at` 统一成 `url/author/text/time` |
 
 `ReachResearch` 新增 `channel="x"`（Research X）：走 `XAdapter.search`，推文文本作为材料 title、每条推文只留自己那一行进 `ResearchStore`；未配置后端时 `fetch/harvest` 返回可解释失败。
 
-**当前状态**：`twitter-cli` 已装、代理已写入 `~/.agent-reach/config.yaml`（HTTP/HTTPS 走 `127.0.0.1:7890`，实测 `x.com` 200、`api.x.com` 401=只差认证）。缺最后一步凭据：`agent-reach configure twitter-cookies`（隐藏输入 `auth_token`/`ct0`，建议用户自己在终端跑，不经过 Agent 上下文）。配好后 `default_x_adapter()` 自动接上，无需改代码；没配之前所有 X 调用如实返回「凭据缺失」。
+**当前状态（X 真实跑通）**：`default_x_adapter()` 探测到 `opencli`（1.8.8）→ `OpenCliXBackend`，复用 Chrome 里已登录的 x.com 会话（`AZEN_BTC`）。真实验证过的读路径：`search`（`ReachResearch.fetch/harvest channel="x"`，3 条入库 `data/research.sqlite3`）、`timeline`、`mentions`（whoami → `@自己` 搜索）、`analytics`（`twitter tweets` 找到自己最近推文并给指标）。备选 `TwitterCliXBackend`（twitter-cli + cookie 凭据，`agent-reach configure twitter-cookies`）已实现并在测试覆盖，OpenCLI 不可用时自动降级。代理走 `~/.agent-reach/config.yaml` 的 `proxy`（`127.0.0.1:7890`，twitter-cli 链路用；OpenCLI 走浏览器自己的网络栈）。
 
 ## X 内容工作流（Phase 11）
 

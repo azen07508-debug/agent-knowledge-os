@@ -141,13 +141,20 @@ class XAdapter:
         return {"ok": True, "action": action, "items": items, "count": len(items)}
 
 
-def default_x_adapter(config_path: str | None = None) -> "XAdapter":
-    """有凭据就接 twitter-cli 后端，没有就返回未配置的 adapter（不假装成功）。"""
+def default_x_adapter(
+    config_path: str | None = None,
+    which: "Callable[[str], Any] | None" = None,
+) -> "XAdapter":
+    """探测可用后端：OpenCLI（浏览器登录态）优先，其次 twitter-cli 凭据；都没有就返回未配置的 adapter（不假装成功）。"""
+    from runtime.opencli_x_backend import OpenCliXBackend
     from runtime.twitter_backend import TwitterCliXBackend
 
+    opencli = OpenCliXBackend(**({"which": which} if which else {}))
+    if opencli.available:
+        return XAdapter(backend=opencli)
     kwargs = {"config_path": config_path} if config_path else {}
-    backend = TwitterCliXBackend(**kwargs)
-    return XAdapter(backend=backend if backend.available else None)
+    twitter = TwitterCliXBackend(**kwargs)
+    return XAdapter(backend=twitter if twitter.available else None)
 
 
 def _call(backend: Any, method: str, params: Mapping[str, Any]) -> dict[str, Any]:

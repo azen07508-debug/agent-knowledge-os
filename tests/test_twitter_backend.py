@@ -217,9 +217,10 @@ def test_non_json_output_is_not_guessed(tmp_path):
 # ── default_x_adapter ───────────────────────────────────────────────────
 
 
-def test_default_x_adapter_detects_credentials(tmp_path):
-    configured = default_x_adapter(config_path=write_config(tmp_path))
-    plain = default_x_adapter(config_path=str(tmp_path / "none.yaml"))
+def test_default_x_adapter_detects_credentials_without_opencli(tmp_path):
+    no_browser = {"which": lambda _: None}  # 模拟本机没装 opencli，走 twitter-cli 凭据链路
+    configured = default_x_adapter(config_path=write_config(tmp_path), **no_browser)
+    plain = default_x_adapter(config_path=str(tmp_path / "none.yaml"), **no_browser)
 
     assert configured.backend is not None
     assert plain.backend is None and plain.configured is False
