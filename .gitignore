@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+backup/
+.pytest_cache/
+*.log
+.DS_Store
+obsidian_vault/.obsidian/workspace.json
+obsidian_vault/.obsidian/workspace-mobile.json

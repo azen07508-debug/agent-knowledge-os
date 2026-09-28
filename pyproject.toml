@@ -1,0 +1,23 @@
+[project]
+name = "agent-knowledge-os"
+version = "0.1.0"
+description = "本地 AI Agent 知识库系统，把 EverOS、Arbiter、Obsidian 和 Codex 工作流连接起来。"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "admin" }
+]
+dependencies = [
+  "everos",
+  "arbiter-lite",
+  "requests",
+  "python-dotenv",
+  "pydantic",
+  "rich",
+  "pytest"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

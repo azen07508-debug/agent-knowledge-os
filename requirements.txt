@@ -1,0 +1,7 @@
+everos
+arbiter-lite
+requests
+python-dotenv
+pydantic
+rich
+pytest
