@@ -42,18 +42,20 @@ TRANSITIONS: dict[str, tuple[str, ...]] = {
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "RESEARCHED": ("sources", "evidence"),
     "DRAFT": ("hook", "core_content"),
-    "REVIEW": ("claims",),
     "SCHEDULED": ("platform_versions",),
     "PUBLISHED": ("platform_versions",),
 }
-"""进入某状态前必须先补齐的字段：没有证据不能算 RESEARCHED，没有钩子不能进 DRAFT。"""
+"""进入某状态前必须先补齐的字段：没有证据不能算 RESEARCHED，没有钩子不能进 DRAFT。
+
+REVIEW 不强制 claims：空断言清单 = 无可核查项（观点型内容合法），三道检查在
+Content Agent 层完成；但发布前必须有平台版本。
+"""
 
 FIELD_LABELS = {
     "sources": "来源",
     "evidence": "证据",
     "hook": "Hook",
     "core_content": "核心内容",
-    "claims": "待核查断言",
     "platform_versions": "平台版本",
 }
 

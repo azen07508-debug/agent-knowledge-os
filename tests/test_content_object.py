@@ -104,13 +104,15 @@ def test_draft_requires_hook_and_core_content():
         obj.transition("DRAFT")
 
 
-def test_review_requires_claims():
+def test_review_accepts_empty_claims():
+    """空断言清单 = 无可核查项，观点型内容也该能进人审（真实材料常抽不出事实线索）。"""
     obj = ready_object(claims=[])
     obj.transition("RESEARCHED")
     obj.transition("DRAFT")
 
-    with pytest.raises(ValueError, match="待核查断言"):
-        obj.transition("REVIEW")
+    obj.transition("REVIEW")
+
+    assert obj.status == "REVIEW"
 
 
 def test_scheduled_requires_platform_versions():

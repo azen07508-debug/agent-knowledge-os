@@ -294,9 +294,33 @@ store.transition(obj.id, "RESEARCHED")                  # 只能沿状态机走
 
 - 字段（PLAN 8）：`topic / angle / audience / sources / evidence / claims / hook / coreContent / media / platformVersions / status`
 - 状态机：`IDEA → RESEARCHED → DRAFT → REVIEW → APPROVED → SCHEDULED → PUBLISHED → ARCHIVED`（任意状态可 → `ARCHIVED`，`ARCHIVED` 是终态）
-- **缺字段不许进阶**：进 `RESEARCHED` 要有 sources+evidence；进 `DRAFT` 要有 hook+core_content；进 `REVIEW` 要有 claims；进 `SCHEDULED/PUBLISHED` 要有 platform_versions
+- **缺字段不许进阶**：进 `RESEARCHED` 要有 sources+evidence；进 `DRAFT` 要有 hook+core_content；进 `SCHEDULED/PUBLISHED` 要有 platform_versions（`REVIEW` 不强制 claims，见下）
 - 跳步 / 缺字段一律 `ValueError` 且**不落库**；`fill()` 只改内容字段，改状态必须走 `transition()`
 - `idea_from_recommendation()` 把事实线索放进 `claims`（待核查断言），等 `REVIEW` 逐条核查
+
+## Content Agent（Phase 9）
+
+`agents/content.py` + `runtime/content_draft.py`：`Topic → Research → Evidence → Outline → Draft → Fact Check → Style Check → AI味检查 → Human Review`。第一阶段只做 X Post / X Thread。
+
+```python
+from agents import ContentAgent
+
+ContentAgent(store=…, memory=…, drafter=None).run("写 Thread", {"recommendation": rec, "brief": brief})
+# -> {content, posts, checks, pending_human_review, summary, errors, next_actions}
+```
+
+| 环节 | 实现（不接 LLM key） |
+| --- | --- |
+| Outline | `build_outline()`：问题 → 事实(≤3) → 观点(≤2) → 角度 → 结论 |
+| Draft | `draft_thread()`：首条 Hook + 大纲行 + 来源行，每条 ≤280；**可注入 `drafter=` 换更强生成器** |
+| Fact Check | 断言在证据摘录里能找到出处 → `supported`，找不到 → `unverifiable`（不冒充「证伪」） |
+| Style Check | 单条 ≤280、Hook 非空、Thread ≤20 条、账号「禁止内容」禁用词 |
+| AI 味检查 | 命中 `首先/总之/综上所述/赋能/闭环…` 套话表即不过 |
+| Human Review | 三道全过才 `DRAFT → REVIEW`；**APPROVED 永远由人来点**，Agent 不自己放行 |
+
+- 读不到 Account Memory 时禁用词检查自动跳过（不编造禁用词）。
+- 状态机拒绝（如缺必填字段）会被 Agent 转成可解释的 `errors`，状态停在原地，不崩溃。
+- `REVIEW` 不强制 claims：空断言清单 = 无可核查项，`fact_check.checked == 0` 会如实显示。
 
 ## 如何运行 demo
 
