@@ -277,6 +277,27 @@ StrategyAgent().run("判断这批选题", {"candidates": [...]})   # 或 {"recom
 - 共同词匹配：拉丁词整词（≥3 字符，避免 `ag/ge` 子串噪声）+ 中文二字滑窗。
 - 全程只读记忆，跑完笔记数量与内容不变。
 
+## Content Object（Phase 8）
+
+`runtime/content_object.py` + `runtime/content_store.py`：内容从想法到发布的生命周期载体，**存 SQLite**（`data/content.sqlite3`），属于生产管线数据，不是长期记忆。
+
+```python
+from runtime.content_object import ContentObject, idea_from_recommendation
+from runtime.content_store import ContentStore
+
+store = ContentStore()
+obj = idea_from_recommendation(recommendation, brief)   # Topic 推荐 -> IDEA
+store.save(obj)
+store.fill(obj.id, {"hook": "…", "core_content": "…"})
+store.transition(obj.id, "RESEARCHED")                  # 只能沿状态机走
+```
+
+- 字段（PLAN 8）：`topic / angle / audience / sources / evidence / claims / hook / coreContent / media / platformVersions / status`
+- 状态机：`IDEA → RESEARCHED → DRAFT → REVIEW → APPROVED → SCHEDULED → PUBLISHED → ARCHIVED`（任意状态可 → `ARCHIVED`，`ARCHIVED` 是终态）
+- **缺字段不许进阶**：进 `RESEARCHED` 要有 sources+evidence；进 `DRAFT` 要有 hook+core_content；进 `REVIEW` 要有 claims；进 `SCHEDULED/PUBLISHED` 要有 platform_versions
+- 跳步 / 缺字段一律 `ValueError` 且**不落库**；`fill()` 只改内容字段，改状态必须走 `transition()`
+- `idea_from_recommendation()` 把事实线索放进 `claims`（待核查断言），等 `REVIEW` 逐条核查
+
 ## 如何运行 demo
 
 ```bash
