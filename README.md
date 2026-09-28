@@ -249,6 +249,34 @@ TopicEngine().recommend(candidates, top_k=5)
 - 只读 Account Memory，不写任何笔记；没有 Account 时**全部标 UNKNOWN 并给出 warning**，不猜受众。
 - 评分项可解释：每个分数都能说清来自哪一项；缺事实、缺时效、关联弱都会落进 `blockers`。
 
+## Strategy Agent（Phase 7）
+
+`agents/strategist.py` + `runtime/strategy.py`：把 Memory 接入 Research，回答**「这个选题为什么适合这个账号」**。
+
+```
+Research ↓ Account Memory ↓ 历史内容 ↓ 历史表现 ↓ Strategy ↓ Topic Recommendation
+```
+
+```python
+from agents import StrategyAgent
+
+StrategyAgent().run("判断这批选题", {"candidates": [...]})   # 或 {"recommendations": [...]}
+# -> {"strategies": [StrategyBrief...], "recommendations", "warnings", "summary", "details"}
+```
+
+`StrategyBrief = {topic, verdict, answer, strategy_basis, history, observations, caveats, recommendation}`
+
+| 记忆来源 | 用法 |
+| --- | --- |
+| Account Memory | `answer` 第一条：账号定位、受众、选题分类 |
+| Strategy（当前内容策略） | 关键词命中 → `strategy_basis`；状态非 `Confirmed` → 只进 `caveats`（不当既定方向） |
+| Content（历史内容） | 主题/正文 ≥2 个共同词 → `history` 重合提示，verdict 降为「需人工判断」 |
+| Analytics / Insights | 只作 `observations` 引用，**不参与评分、不直接改策略**（改策略走 Memory Review） |
+
+- `verdict` ∈ `推荐 / 需人工判断 / 不建议`：契合 HIGH 且无 blocker 才「推荐」，LOW「不建议」。
+- 共同词匹配：拉丁词整词（≥3 字符，避免 `ag/ge` 子串噪声）+ 中文二字滑窗。
+- 全程只读记忆，跑完笔记数量与内容不变。
+
 ## 如何运行 demo
 
 ```bash

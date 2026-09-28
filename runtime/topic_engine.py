@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+import re
 from typing import Any, Iterable, Mapping
 
 from runtime.memory_api import MemoryAPI
@@ -160,7 +161,7 @@ class TopicEngine:
         if keyword_hits:
             return "HIGH", f"分类「{category}」命中账号定位词：{'、'.join(keyword_hits[:3])}。"
 
-        topic_hits = _overlap_words(topic, account_text)
+        topic_hits = overlap_words(topic, account_text)
         if topic_hits:
             return "MEDIUM", f"选题与账号文本有共同词：{'、'.join(topic_hits[:3])}。"
         return "LOW", "选题与当前账号定位、支柱、受众都没有直接关联。"
@@ -213,14 +214,23 @@ def _freshness_score(freshness: str) -> int:
     return 0
 
 
-def _overlap_words(text: str, account_text: str) -> list[str]:
-    """用 2 字滑窗在账号文本里找共同词（无分词依赖，命中即算）。"""
-    text = text.lower()
-    hits = []
-    for index in range(len(text) - 1):
-        pair = text[index : index + 2]
-        if not pair.strip() or pair.isspace():
-            continue
-        if pair in account_text and pair not in hits:
-            hits.append(pair)
+def overlap_words(text: str, account_text: str) -> list[str]:
+    """找共同词：拉丁词按整词（≥3 字符，避免 ag/ge 这种子串噪声），中文按二字滑窗。"""
+    right = set(_tokens(account_text))
+    hits: list[str] = []
+    for token in _tokens(text):
+        if token in right and token not in hits:
+            hits.append(token)
     return hits
+
+
+LATIN_TOKEN = re.compile(r"[a-z0-9#+]{3,}")
+CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
+
+
+def _tokens(text: str) -> list[str]:
+    lowered = text.lower()
+    tokens = LATIN_TOKEN.findall(lowered)
+    for run in CJK_RUN.findall(lowered):
+        tokens += [run[index : index + 2] for index in range(len(run) - 1)]
+    return tokens

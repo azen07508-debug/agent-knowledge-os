@@ -143,6 +143,10 @@ class MemoryAPI:
         record["updated_from"] = current["path"]
         return record
 
+    def list_notes(self, category: str) -> list[str]:
+        """列出某类别的在用记忆路径（不含已归档）；只读。"""
+        return self.layer.list_notes(category)
+
     def search(self, query: str, category: str | None = None, top_k: int = 5) -> dict[str, Any]:
         """检索记忆。指定 category 时只在该类别内做本地匹配。"""
         if category:

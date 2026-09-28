@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from runtime.memory_api import MemoryAPI
-from runtime.topic_engine import TopicEngine
+from runtime.topic_engine import TopicEngine, overlap_words
 from runtime.topics import TopicCandidate
 
 ACCOUNT = {
@@ -141,3 +141,10 @@ def test_why_lists_sources_and_fit(tmp_path):
     assert any("2 条来源" in reason for reason in rec["why"])
     assert any("事实线索" in reason for reason in rec["why"])
     assert any("时效窗口" in reason for reason in rec["why"])
+
+
+def test_overlap_words_uses_whole_latin_words_not_substrings():
+    # 曾经的噪声：obsidian 与 page 共用 "ag"/"ge"，导致假 MEDIUM 契合
+    assert overlap_words("obsidian-agent-memory", "content page age") == []
+    assert overlap_words("obsidian agent memory", "AI Agent 玩家") == ["agent"]
+    assert "记忆" in overlap_words("长期记忆分层", "把记忆做成冷暖热三层")
