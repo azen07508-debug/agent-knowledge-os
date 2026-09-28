@@ -224,6 +224,31 @@ agent.run("记忆分层", {"materials": [...]})      # 用现成材料跑，不�
 - **候选不写记忆**：没经过复核的选题不是长期记忆；材料只进 `ResearchStore`。
 - 抽取规则可由构造参数 `extractor=` 覆盖（上层模型给出更强的抽取结果时）。
 
+## Topic Engine（Phase 6）
+
+`runtime/topic_engine.py`：把 `TopicCandidate` 变成**带理由的选题推荐**，回答四个问题——为什么值得研究、证据是什么、是否适合当前账号、有哪些可用角度。
+
+```python
+from runtime.topic_engine import TopicEngine
+
+TopicEngine().recommend(candidates, top_k=5)
+# -> {"ok", "checked", "account", "recommendations": [TopicRecommendation...], "warnings"}
+```
+
+| 字段 | 来源 |
+| --- | --- |
+| `topic / sources / evidence / freshness` | Phase 5 候选 |
+| `angles` | 按分类查表（记忆系统/AI 工具/内容创作/平台运营/数据增长/未分类 各 3 个角度） |
+| `audience` | **只取 Account Memory 的目标受众**，没有就 `UNKNOWN` |
+| `competition` | 恒为 `UNKNOWN`：没有竞争数据，不编造（接 X 数据后再算） |
+| `account_fit` | `HIGH/MEDIUM/LOW/UNKNOWN`：分类关键词命中账号定位 → HIGH；选题与账号文本有二元词交集 → MEDIUM |
+| `content_type` | 只输出 `X Post` / `X Thread`（Phase 9 第一阶段范围） |
+| `why / blockers` | 每条推荐都带「为什么值得研究」和「缺什么、卡在哪」 |
+| `score` | 证据 0–40（来源数 + 事实） + 时效 0–25（7/30/90 天窗口） + 账号契合 0–35 |
+
+- 只读 Account Memory，不写任何笔记；没有 Account 时**全部标 UNKNOWN 并给出 warning**，不猜受众。
+- 评分项可解释：每个分数都能说清来自哪一项；缺事实、缺时效、关联弱都会落进 `blockers`。
+
 ## 如何运行 demo
 
 ```bash
