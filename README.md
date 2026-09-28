@@ -156,6 +156,23 @@ memory.health(stale_days=90)   # 只读巡检：duplicate / conflict / stale / n
 
 写入时的状态映射：Analytics 分析记录与未验证的 Insight 直接落 `pending`（等 Memory Review），已验证 Insight、实验、决策、账号、策略落 `active`。
 
+## Agent-Reach 调研（Phase 4）
+
+`runtime/reach_research.py` 封装 agent-reach 的三条零配置通道，把外部调研结论写进 `11-Research`：
+
+```python
+from runtime.reach_research import ReachResearch
+
+reach = ReachResearch()
+reach.fetch("agent memory layer", channel="web")     # 只读：返回截断材料 + 来源 URL，不落盘
+reach.research(topic="Agent-Reach", conclusions=["多后端路由"], query="agent-reach", channel="github")
+```
+
+- 通道：`web`（Exa 搜索）、`github`（`gh search repos`，自动把 `owner/repo` 还原成仓库地址）、`page`（Jina Reader 读单页）
+- **失败不写**：命令缺失、退出码非 0、通道返回限流/报错文本、抓不到任何来源 URL → `fetch` 返回 `ok=False`，`research` 抛 `RuntimeError` 且 vault 无改动
+- **结论由调用方给出**：本层不生成内容、不存原文；写入的只有结论、来源 URL，frontmatter `source` 取第一个来源
+- 通道报错（如 Exa 免费限流）由调用方按 agent-reach 的重试链处理，本层不自动重试
+
 ## 如何运行 demo
 
 ```bash
