@@ -141,6 +141,15 @@ class XAdapter:
         return {"ok": True, "action": action, "items": items, "count": len(items)}
 
 
+def default_x_adapter(config_path: str | None = None) -> "XAdapter":
+    """有凭据就接 twitter-cli 后端，没有就返回未配置的 adapter（不假装成功）。"""
+    from runtime.twitter_backend import TwitterCliXBackend
+
+    kwargs = {"config_path": config_path} if config_path else {}
+    backend = TwitterCliXBackend(**kwargs)
+    return XAdapter(backend=backend if backend.available else None)
+
+
 def _call(backend: Any, method: str, params: Mapping[str, Any]) -> dict[str, Any]:
     """调后端并兜底：没实现的方法当作未配置，异常转成失败结果，绝不假装成功。"""
     func: Callable[..., Any] | None = getattr(backend, method, None)

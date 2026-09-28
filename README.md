@@ -339,13 +339,14 @@ adapter.schedule(text, at)
 | 设计 | 说明 |
 | --- | --- |
 | 后端可注入 | `backend` 需提供同名方法并返回 `{"ok": ...}`；**未配置时所有调用返回 `ok=False` + 明确提示**，不假装成功 |
+| 默认后端探测 | `default_x_adapter()`：`~/.agent-reach/config.yaml` 里有 `twitter_auth_token`/`twitter_ct0` 就自动接 `TwitterCliXBackend`，否则返回未配置 adapter；`ReachResearch` 与 `XWorkflow` 默认走它 |
 | 默认演练 | 写操作默认 `dry_run=True`，真实发送必须显式 `dry_run=False`（对外操作由上层把关） |
 | X 规则 | 单条 ≤280、Thread ≤20 条、空内容拒绝，校验在后端之前 |
 | 字段归一化 | 后端返回的 `id_str/screen_name/full_text/created_at` 统一成 `url/author/text/time` |
 
 `ReachResearch` 新增 `channel="x"`（Research X）：走 `XAdapter.search`，推文文本作为材料 title、每条推文只留自己那一行进 `ResearchStore`；未配置后端时 `fetch/harvest` 返回可解释失败。
 
-**当前状态**：本机 X 渠道未解锁、x-mcp 未配置 → `backend` 尚未接入（安装需要 X 登录，等确认后注入 `McporterXBackend`）。
+**当前状态**：`twitter-cli` 已装、代理已写入 `~/.agent-reach/config.yaml`（HTTP/HTTPS 走 `127.0.0.1:7890`，实测 `x.com` 200、`api.x.com` 401=只差认证）。缺最后一步凭据：`agent-reach configure twitter-cookies`（隐藏输入 `auth_token`/`ct0`，建议用户自己在终端跑，不经过 Agent 上下文）。配好后 `default_x_adapter()` 自动接上，无需改代码；没配之前所有 X 调用如实返回「凭据缺失」。
 
 ## X 内容工作流（Phase 11）
 

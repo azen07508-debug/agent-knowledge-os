@@ -20,7 +20,7 @@ from runtime.content_store import ContentStore
 from runtime.memory_api import MemoryAPI
 from runtime.reach_research import ReachResearch
 from runtime.topics import classify, extract
-from runtime.x_adapter import XAdapter
+from runtime.x_adapter import XAdapter, default_x_adapter
 
 
 class XWorkflow:
@@ -61,7 +61,7 @@ class XWorkflow:
     @property
     def x(self) -> XAdapter:
         if self._x is None:
-            self._x = XAdapter()
+            self._x = default_x_adapter()
         return self._x
 
     @property

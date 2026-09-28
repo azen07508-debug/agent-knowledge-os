@@ -344,7 +344,7 @@ def test_x_channel_fetches_through_adapter(tmp_path):
 
 
 def test_x_channel_without_backend_fails_clearly(tmp_path):
-    reach = make(tmp_path)  # 未注入后端
+    reach = make(tmp_path, x_adapter=XAdapter())  # 显式不配后端（默认 adapter 是否配好取决于本机凭据，测试要确定性）
 
     fetched = reach.fetch("obsidian", channel="x")
 

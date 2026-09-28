@@ -17,7 +17,7 @@ from typing import Any, Callable, Iterable
 
 from runtime.memory_api import MemoryAPI
 from runtime.research_store import CONTENT_CHARS, ResearchItem, ResearchStore
-from runtime.x_adapter import XAdapter
+from runtime.x_adapter import XAdapter, default_x_adapter
 
 DIGEST_CHARS = 1500
 """返回给 Agent 的材料摘要上限：原始返回不进记忆，也不整段塞给下游。"""
@@ -120,9 +120,12 @@ class ReachResearch:
 
     @property
     def x(self) -> XAdapter:
-        """X 读接口（search 等）；Phase 10 起 channel='x' 走这里。"""
+        """X 读接口（search 等）；Phase 10 起 channel='x' 走这里。
+
+        默认用 default_x_adapter()：配了 twitter-cli 凭据就自动接上，没配就保持未配置。
+        """
         if self._x is None:
-            self._x = XAdapter()
+            self._x = default_x_adapter()
         return self._x
 
     @property
