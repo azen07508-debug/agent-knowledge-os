@@ -347,6 +347,41 @@ adapter.schedule(text, at)
 
 **当前状态**：本机 X 渠道未解锁、x-mcp 未配置 → `backend` 尚未接入（安装需要 X 登录，等确认后注入 `McporterXBackend`）。
 
+## X 内容工作流（Phase 11）
+
+`agents/x_workflow.py`：`XWorkflow` 提供三条工作流和一个受人审闸门约束的发布出口。
+
+```python
+from agents import XWorkflow
+
+wf = XWorkflow(reach=…, store=…, memory=…, x=XAdapter(backend=…), content_agent=…)
+wf.url_to_draft("https://example.com/post")     # 文章 URL → 抓取 → 摘要/核心观点 → Thread 草稿
+wf.topic_to_thread(candidate, brief=None)       # Topic → Thread（复用 Content Agent 三道检查）
+wf.research_to_post("obsidian agent memory 生态") # 11-Research 结论 → 原帖草稿
+wf.publish(content_id)                          # 只发 APPROVED；走 XAdapter.thread
+```
+
+- 摘要/事实/观点沿用 `topics.extract` 规则，**证据摘录会覆盖事实行**（否则事实核查永远「无出处」）。
+- `publish()`：状态非 `APPROVED` → 拒绝并说明「未通过人审」；X 发送失败 → 状态保持不变；成功 → `APPROVED → SCHEDULED → PUBLISHED`，并记录 `platform_versions = {"X": "Thread"}`。
+- 走 `XAdapter`，不绕过（X API 不散落到工作流里）。
+
+## Human Review（Phase 12）
+
+`runtime/human_review.py`：发布前的强制人审。
+
+```python
+from runtime.human_review import build_packet, render, approve, request_changes
+
+packet = build_packet(store, content_id, research_store=…)   # 原始研究/来源/AI 生成内容/Claims/Evidence/AI 建议/修改记录
+print(render(packet))                                         # 审核界面（终端文本版）
+approve(store, content_id, reviewer="admin", note="…")        # REVIEW → APPROVED，记录审核人
+request_changes(store, content_id, reviewer="admin", note="Hook 太平")  # REVIEW → DRAFT，必须写要改什么
+```
+
+- 只有 `REVIEW` 状态可审批；驳回必须写明要改什么，否则作者只能靠猜。
+- `ContentObject` 新增 `ai_suggestions`（创建时由 Topic/Strategy 的理由生成）与 `review_notes`（只增不改的审核记录）。
+- 配套状态链：`DRAFT → REVIEW → APPROVED → SCHEDULED → PUBLISHED`（与 PLAN 12 一致）。
+
 ## 如何运行 demo
 
 ```bash

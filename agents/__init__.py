@@ -6,6 +6,7 @@ from agents.planner import PlannerAgent
 from agents.researcher import ResearcherAgent
 from agents.reviewer import ReviewerAgent
 from agents.strategist import StrategyAgent
+from agents.x_workflow import XWorkflow
 
 __all__ = [
     "PlannerAgent",
@@ -14,4 +15,5 @@ __all__ = [
     "ReviewerAgent",
     "StrategyAgent",
     "ContentAgent",
+    "XWorkflow",
 ]

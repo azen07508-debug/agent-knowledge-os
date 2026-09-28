@@ -16,7 +16,7 @@ from runtime.content_object import ContentObject, STATUSES
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "content.sqlite3"
 
-JSON_FIELDS = ("sources", "evidence", "claims", "media", "platform_versions")
+JSON_FIELDS = ("sources", "evidence", "claims", "media", "platform_versions", "ai_suggestions", "review_notes")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS content_objects (
@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS content_objects (
     core_content      TEXT NOT NULL DEFAULT '',
     media             TEXT NOT NULL DEFAULT '[]',
     platform_versions TEXT NOT NULL DEFAULT '{}',
+    ai_suggestions    TEXT NOT NULL DEFAULT '[]',
+    review_notes      TEXT NOT NULL DEFAULT '[]',
     status            TEXT NOT NULL DEFAULT 'IDEA',
     created_at        TEXT NOT NULL,
     updated_at        TEXT NOT NULL

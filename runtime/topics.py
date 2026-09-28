@@ -78,7 +78,11 @@ def extract(item: Mapping[str, Any]) -> dict[str, list[Any]]:
 
     evidence = []
     if url:
-        quote = lines[0][:80] if lines else str(item.get("title") or "")[:80]
+        if facts:
+            # 摘录要能支撑事实：不然事实核查永远「无出处」
+            quote = "；".join(facts)
+        else:
+            quote = lines[0][:80] if lines else str(item.get("title") or "")[:80]
         evidence.append({"url": url, "quote": quote})
     return {"facts": facts, "opinions": opinions, "evidence": evidence[:MAX_EVIDENCE]}
 

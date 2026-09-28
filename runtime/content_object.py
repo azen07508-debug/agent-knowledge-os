@@ -74,6 +74,8 @@ class ContentObject:
     core_content: str = ""
     media: list[str] = field(default_factory=list)
     platform_versions: dict[str, str] = field(default_factory=dict)
+    ai_suggestions: list[str] = field(default_factory=list)
+    review_notes: list[dict[str, Any]] = field(default_factory=list)
     status: str = "IDEA"
     id: str = ""
     created_at: str = ""
@@ -132,9 +134,21 @@ class ContentObject:
         }
         unknown = set(fields) - updatable
         if unknown:
-            raise ValueError(f"不可更新的字段：{'、'.join(sorted(unknown))}；状态请用 transition()。")
+            raise ValueError(f"不可更新的字段：{'、'.join(sorted(unknown))}；状态请用 transition()，审核记录请用 append_review_note()。")
         for name, value in fields.items():
             setattr(self, name, value)
+        self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def append_review_note(self, action: str, reviewer: str = "", note: str = "") -> None:
+        """追加一条审核/修改记录（只增不改，供 Human Review 展示）。"""
+        self.review_notes.append(
+            {
+                "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "action": action,
+                "reviewer": reviewer,
+                "note": note,
+            }
+        )
         self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def to_dict(self) -> dict[str, Any]:
@@ -160,12 +174,18 @@ def idea_from_recommendation(
     if audience == "UNKNOWN" and brief:
         answer = " ".join(str(line) for line in brief.get("answer") or [])
         audience = answer or ""
+    suggestions = [str(line) for line in (recommendation.get("why") or [])]
+    suggestions += [str(line) for line in (recommendation.get("blockers") or [])]
+    if brief:
+        suggestions += [f"策略判断：{line}" for line in (brief.get("answer") or [])]
+        suggestions += [f"注意：{line}" for line in (brief.get("caveats") or [])]
     return ContentObject(
         topic=str(recommendation.get("topic") or "").strip(),
-        angle=angles[0] if angles else "",
+        angle=angles[0] if angles else str(recommendation.get("angle") or ""),
         audience=audience,
         sources=list(recommendation.get("sources") or []),
         evidence=list(recommendation.get("evidence") or []),
         claims=list(recommendation.get("facts") or []),
+        ai_suggestions=suggestions,
         status="IDEA",
     )
