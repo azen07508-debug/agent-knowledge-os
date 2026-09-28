@@ -173,6 +173,30 @@ reach.research(topic="Agent-Reach", conclusions=["多后端路由"], query="agen
 - **结论由调用方给出**：本层不生成内容、不存原文；写入的只有结论、来源 URL，frontmatter `source` 取第一个来源
 - 通道报错（如 Exa 免费限流）由调用方按 agent-reach 的重试链处理，本层不自动重试
 
+### ResearchItem（原始材料数据库）
+
+按 PLAN 1.4：原始抓取进数据库，值得长期使用的结论才进记忆。
+
+```python
+from runtime.research_store import ResearchItem, ResearchStore
+
+store = ResearchStore()                       # data/research.sqlite3（已 gitignore）
+reach = ReachResearch(store=store)
+reach.harvest("Obsidian 记忆", channel="web", topic="memory")  # 只落库，不写记忆
+store.search("热层", topic="memory")           # 按关键词/主题查材料
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` / `url` | `sha1(url)[:12]`，URL 唯一键，重复抓取即更新 |
+| `source` | 通道名（web / github / page） |
+| `author` `timestamp` `title` | Exa 分块输出里的 Author / Published / Title |
+| `content` | 材料摘要，上限 800 字符（不是全文） |
+| `engagement` | 互动数据（JSON），X 接入前留空 |
+| `topic` `evidence` `query` `fetched_at` | 归类、证据、触发查询、抓取时间 |
+
+`ReachResearch.research()` 同时做两件事：材料写进 `ResearchStore`，结论写进 `11-Research`。
+
 ## 如何运行 demo
 
 ```bash

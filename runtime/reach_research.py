@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from runtime.memory_api import MemoryAPI
+from runtime.research_store import CONTENT_CHARS, ResearchItem, ResearchStore
 
 DIGEST_CHARS = 1500
 """返回给 Agent 的材料摘要上限：原始返回不进记忆，也不整段塞给下游。"""
 
 URL_PATTERN = re.compile(r"https?://[A-Za-z0-9\-._~:/?#%&=+@!$]+")
+
+BLOCK_FIELD = re.compile(r"^(Title|URL|Author|Published):\s*(.*)$", re.MULTILINE)
 
 ChannelCommand = Callable[[str, int], list[str]]
 
@@ -104,11 +107,20 @@ class ReachResearch:
         runner: Callable[[list[str], int], Any] = _default_run,
         which: Callable[[str], str | None] = shutil.which,
         timeout: int = 60,
+        store: ResearchStore | None = None,
     ) -> None:
         self.memory = memory or MemoryAPI(vault_path=vault_path)
         self._run = runner
         self._which = which
         self.timeout = timeout
+        self._store = store
+
+    @property
+    def store(self) -> ResearchStore:
+        """研究材料数据库（首次使用时才创建，fetch 只读不落库）。"""
+        if self._store is None:
+            self._store = ResearchStore()
+        return self._store
 
     # ── 只读：抓材料 ─────────────────────────────────────────────────────
 
@@ -147,7 +159,7 @@ class ReachResearch:
         if len(digest) > DIGEST_CHARS:
             digest = digest[:DIGEST_CHARS] + "…"
 
-        sources = _dedupe(list(_github_sources(output)) + extract_sources(output)) if channel == "github" else extract_sources(output)
+        sources = collect_sources(channel, output)
         if _is_failure(digest, sources):
             return {
                 "ok": False,
@@ -162,6 +174,29 @@ class ReachResearch:
             "query": query,
             "digest": digest,
             "sources": sources,
+        }
+
+    # ── 落库：原始材料进数据库 ───────────────────────────────────────────
+
+    def harvest(
+        self,
+        query: str,
+        channel: str = "web",
+        limit: int = 5,
+        topic: str = "",
+    ) -> dict[str, Any]:
+        """抓取并把材料存进 ResearchStore（SQLite），不写记忆。"""
+        fetched = self.fetch(query, channel=channel, limit=limit)
+        if not fetched["ok"]:
+            return fetched
+        items = parse_items(channel, query, fetched["digest"], topic=topic)
+        saved = self.store.save_many(items)
+        return {
+            "ok": True,
+            "channel": channel,
+            "query": query,
+            "items": [{"id": item.id, "url": item.url, "title": item.title} for item in items],
+            "stored": saved,
         }
 
     # ── 写入：结论进记忆 ─────────────────────────────────────────────────
@@ -190,6 +225,9 @@ class ReachResearch:
         if not merged:
             raise RuntimeError("调研结果里没有可用来源 URL，拒绝写入无来源结论。")
 
+        # 原始材料进数据库（PLAN 1.4：不存进记忆）
+        stored = self.store.save_many(parse_items(channel, query, fetched["digest"], topic=topic))
+
         record = self.memory.layer.save_research(
             topic=topic,
             conclusions=conclusions,
@@ -203,6 +241,7 @@ class ReachResearch:
             "query": query,
             "sources": merged,
             "digest_chars": len(fetched["digest"]),
+            "stored": stored,
         }
         return record
 
@@ -210,6 +249,78 @@ class ReachResearch:
 def extract_sources(text: str) -> list[str]:
     """从工具输出里抽取去重后的 URL（保留出现顺序）。"""
     return _dedupe(match.group(0).rstrip(".,;") for match in URL_PATTERN.finditer(text))
+
+
+def collect_sources(channel: str, output: str) -> list[str]:
+    """通道相关的来源抽取：GitHub 的 TSV 要先把 owner/repo 还原成地址。"""
+    if channel == "github":
+        return _dedupe(list(_github_sources(output)) + extract_sources(output))
+    return extract_sources(output)
+
+
+def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[ResearchItem]:
+    """把通道输出拆成 ResearchItem。
+
+    `Title:/URL:/Author:/Published:` 分块格式按块拆（Exa 搜索结果）；
+    其余格式（GitHub TSV、Jina 页面）每个来源一条，content 用截断后的材料摘要。
+    """
+    blocks = _parse_blocks(channel, query, output, topic)
+    if blocks:
+        return blocks
+    digest = output.strip()
+    return [
+        ResearchItem(
+            source=channel,
+            url=url,
+            content=_row_for(channel, url, output) or digest,
+            query=query,
+            topic=topic,
+        )
+        for url in collect_sources(channel, output)
+    ]
+
+
+def _row_for(channel: str, url: str, output: str) -> str:
+    """GitHub TSV 之类的行式输出：每个来源只留它自己那一行，不共享整段输出。"""
+    if channel != "github":
+        return ""
+    key = "/".join(url.rstrip("/").split("/")[-2:]) if "github.com/" in url else url
+    for line in output.splitlines():
+        if key and key in line:
+            return line.strip()
+    return ""
+
+
+def _parse_blocks(channel: str, query: str, output: str, topic: str) -> list[ResearchItem]:
+    lines = output.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith("Title:")]
+    items: list[ResearchItem] = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(lines)
+        fields: dict[str, str] = {}
+        body: list[str] = []
+        for line in lines[start:end]:
+            match = BLOCK_FIELD.match(line)
+            if match:
+                fields[match.group(1).lower()] = match.group(2).strip()
+            else:
+                body.append(line)
+        url = fields.get("url", "")
+        if not url:
+            continue
+        items.append(
+            ResearchItem(
+                source=channel,
+                url=url,
+                title=fields.get("title", ""),
+                author=fields.get("author", ""),
+                timestamp=fields.get("published", ""),
+                content="\n".join(body).strip(),
+                query=query,
+                topic=topic,
+            )
+        )
+    return items
 
 
 def _as_lines(value: str | Iterable[str] | None) -> list[str]:

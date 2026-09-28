@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from runtime.reach_research import ReachResearch, extract_sources
+from runtime.reach_research import ReachResearch, extract_sources, parse_items
+from runtime.research_store import ResearchStore
 
 WEB_OUTPUT = """\
 # 搜索结果
@@ -28,6 +29,7 @@ def fake_runner(stdout=WEB_OUTPUT, returncode=0, stderr="", calls=None):
 
 
 def make(tmp_path, runner=None, which=None, **kwargs):
+    kwargs.setdefault("store", ResearchStore(":memory:"))
     return ReachResearch(
         vault_path=tmp_path,
         runner=runner or fake_runner(),
@@ -207,3 +209,85 @@ def test_github_research_records_repo_urls(tmp_path):
     text = (tmp_path / "11-Research" / "研究-调研.md").read_text(encoding="utf-8")
     assert "- https://github.com/owner/repo" in text
     assert "source: https://github.com/owner/repo" in text
+
+
+# ── ResearchItem：原始材料进数据库 ─────────────────────────────────────
+
+
+EXA_OUTPUT = """Title: Obsidian + Hermes 打造三层记忆体系
+URL: https://blog.csdn.net/weixin_41736460/article/details/161040004
+Published: 2026-05-13T02:04:34.000Z
+Author: 某位作者
+Highlights:
+| 工具 | 定位 |
+热层 / 暖层 / 冷层的分层设计。
+"""
+
+
+def test_parse_items_splits_title_url_blocks(tmp_path):
+    items = parse_items("web", "Obsidian 记忆", EXA_OUTPUT, topic="memory")
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.url == "https://blog.csdn.net/weixin_41736460/article/details/161040004"
+    assert item.title.startswith("Obsidian + Hermes")
+    assert item.author == "某位作者"
+    assert item.timestamp == "2026-05-13T02:04:34.000Z"
+    assert "热层" in item.content and "Title:" not in item.content
+    assert item.topic == "memory" and item.query == "Obsidian 记忆"
+    assert item.source == "web"
+
+
+def test_parse_items_falls_back_to_one_item_per_source(tmp_path):
+    items = parse_items("github", "obsidian", "owner/repo\tA helper\tpublic\t2026-09-28")
+
+    assert [item.url for item in items] == ["https://github.com/owner/repo"]
+    assert "A helper" in items[0].content
+
+
+def test_parse_items_keeps_each_github_row_on_its_own_item(tmp_path):
+    output = (
+        "owner/alpha\tThe alpha tool\tpublic\t2026-09-28\n"
+        "owner/beta\tThe beta tool\tpublic\t2026-09-28\n"
+    )
+
+    items = {item.url: item for item in parse_items("github", "q", output)}
+
+    assert items["https://github.com/owner/alpha"].content == "owner/alpha\tThe alpha tool\tpublic\t2026-09-28"
+    assert "beta" not in items["https://github.com/owner/alpha"].content
+    assert items["https://github.com/owner/beta"].content.endswith("2026-09-28")
+
+
+def test_harvest_stores_material_without_writing_memory(tmp_path):
+    reach = make(tmp_path, runner=fake_runner(stdout=EXA_OUTPUT))
+
+    result = reach.harvest("Obsidian 记忆", topic="memory")
+
+    assert result["ok"] is True
+    assert result["stored"] == {"ok": True, "created": 1, "updated": 0, "count": 1}
+    assert reach.store.count() == 1
+    assert reach.store.search("热层")[0]["topic"] == "memory"
+    assert not (tmp_path / "11-Research").exists()  # 只落库，不写记忆
+
+
+def test_harvest_returns_failure_without_touching_store(tmp_path):
+    reach = make(tmp_path, which=fake_which(available=()))
+
+    result = reach.harvest("q")
+
+    assert result["ok"] is False
+    assert reach.store.count() == 0
+
+
+def test_research_stores_raw_items_and_conclusion(tmp_path):
+    stdout = "owner/repo\tA helper\tpublic\t2026-09-28\n"
+    reach = make(tmp_path, runner=fake_runner(stdout=stdout))
+
+    record = reach.research(topic="调研", conclusions=["可参考"], query="helper", channel="github")
+
+    assert reach.store.count() == 1  # 原始材料在数据库
+    assert reach.store.get("https://github.com/owner/repo")["source"] == "github"
+    assert record["fetched"]["stored"]["created"] == 1
+    assert (tmp_path / "11-Research" / "研究-调研.md").exists()  # 结论在记忆
+    # 记忆里不出现原始 TSV
+    assert "A helper\tpublic" not in (tmp_path / "11-Research" / "研究-调研.md").read_text(encoding="utf-8")
