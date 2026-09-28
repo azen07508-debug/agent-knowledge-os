@@ -7,6 +7,7 @@ import pytest
 from runtime.reach_research import ReachResearch, extract_sources, parse_items
 from runtime.research_store import ResearchStore
 from runtime.topics import build_candidates
+from runtime.x_adapter import XAdapter
 
 WEB_OUTPUT = """\
 # 搜索结果
@@ -314,3 +315,60 @@ def test_research_stores_raw_items_and_conclusion(tmp_path):
     assert (tmp_path / "11-Research" / "研究-调研.md").exists()  # 结论在记忆
     # 记忆里不出现原始 TSV
     assert "A helper\tpublic" not in (tmp_path / "11-Research" / "研究-调研.md").read_text(encoding="utf-8")
+
+
+# ── X 通道（Phase 10） ──────────────────────────────────────────────────
+
+
+class StubXBackend:
+    def search(self, query: str, limit: int):
+        return {
+            "ok": True,
+            "items": [
+                {"url": "https://x.com/dev/status/1", "author": "dev",
+                 "text": "Obsidian 记忆分层实测", "time": "2026-09-29"},
+                {"url": "https://x.com/dev/status/2", "author": "dev",
+                 "text": "第二条推文", "time": "2026-09-28"},
+            ],
+        }
+
+
+def test_x_channel_fetches_through_adapter(tmp_path):
+    reach = make(tmp_path, x_adapter=XAdapter(backend=StubXBackend()))
+
+    fetched = reach.fetch("obsidian", channel="x", limit=5)
+
+    assert fetched["ok"] is True and fetched["channel"] == "x"
+    assert fetched["sources"] == ["https://x.com/dev/status/1", "https://x.com/dev/status/2"]
+    assert "Obsidian 记忆分层实测" in fetched["digest"]
+
+
+def test_x_channel_without_backend_fails_clearly(tmp_path):
+    reach = make(tmp_path)  # 未注入后端
+
+    fetched = reach.fetch("obsidian", channel="x")
+
+    assert fetched["ok"] is False
+    assert "未配置" in fetched["message"]
+
+
+def test_x_materials_keep_tweet_text_and_own_row(tmp_path):
+    reach = make(tmp_path, x_adapter=XAdapter(backend=StubXBackend()))
+
+    harvested = reach.harvest("obsidian", channel="x", topic="memory")
+
+    assert harvested["ok"] is True and harvested["stored"]["count"] == 2
+    first = next(item for item in harvested["items"] if item["url"].endswith("/1"))
+    assert first["title"] == "Obsidian 记忆分层实测"
+    assert "第二条推文" not in first["content"]  # 每条推文只留自己那一行
+
+
+def test_x_channel_can_write_research_conclusion(tmp_path):
+    reach = make(tmp_path, x_adapter=XAdapter(backend=StubXBackend()))
+
+    record = reach.research(topic="X 上的讨论", conclusions=["X 上有相关实测讨论"],
+                            query="obsidian", channel="x")
+
+    assert reach.store.count() == 2  # 原始材料进数据库
+    assert (tmp_path / "11-Research" / "研究-X 上的讨论.md").exists()  # 结论进记忆
+    assert record["fetched"]["channel"] == "x"

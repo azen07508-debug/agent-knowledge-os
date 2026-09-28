@@ -17,6 +17,7 @@ from typing import Any, Callable, Iterable
 
 from runtime.memory_api import MemoryAPI
 from runtime.research_store import CONTENT_CHARS, ResearchItem, ResearchStore
+from runtime.x_adapter import XAdapter
 
 DIGEST_CHARS = 1500
 """返回给 Agent 的材料摘要上限：原始返回不进记忆，也不整段塞给下游。"""
@@ -108,12 +109,21 @@ class ReachResearch:
         which: Callable[[str], str | None] = shutil.which,
         timeout: int = 60,
         store: ResearchStore | None = None,
+        x_adapter: XAdapter | None = None,
     ) -> None:
         self.memory = memory or MemoryAPI(vault_path=vault_path)
         self._run = runner
         self._which = which
         self.timeout = timeout
         self._store = store
+        self._x = x_adapter
+
+    @property
+    def x(self) -> XAdapter:
+        """X 读接口（search 等）；Phase 10 起 channel='x' 走这里。"""
+        if self._x is None:
+            self._x = XAdapter()
+        return self._x
 
     @property
     def store(self) -> ResearchStore:
@@ -126,8 +136,10 @@ class ReachResearch:
 
     def fetch(self, query: str, channel: str = "web", limit: int = 5) -> dict[str, Any]:
         """调 agent-reach 通道抓材料，返回截断摘要与来源 URL；失败返回 ok=False，不抛。"""
+        if channel == "x":
+            return self._fetch_x(query, limit)
         if channel not in CHANNELS:
-            raise ValueError(f"未知调研通道：{channel}，可选：{', '.join(CHANNELS)}")
+            raise ValueError(f"未知调研通道：{channel}，可选：x, {', '.join(CHANNELS)}")
 
         argv = CHANNELS[channel](query, limit)
         binary = argv[0]
@@ -174,6 +186,29 @@ class ReachResearch:
             "query": query,
             "digest": digest,
             "sources": sources,
+        }
+
+    def _fetch_x(self, query: str, limit: int) -> dict[str, Any]:
+        """Research X：走 XAdapter.search（不散落 X API 逻辑）。"""
+        result = self.x.search(query, limit)
+        if not result.get("ok"):
+            return {"ok": False, "channel": "x", "query": query, "message": result.get("message", "X 搜索失败。")}
+        items = [item for item in result.get("items", []) if item.get("url")]
+        if not items:
+            return {"ok": False, "channel": "x", "query": query, "message": "X 搜索没有带链接的结果。"}
+        lines = [
+            "\t".join((item["url"], item.get("author", ""), item.get("text", "").replace("\n", " ")))
+            for item in items
+        ]
+        digest = "\n".join(lines)
+        if len(digest) > DIGEST_CHARS:
+            digest = digest[:DIGEST_CHARS] + "…"
+        return {
+            "ok": True,
+            "channel": "x",
+            "query": query,
+            "digest": digest,
+            "sources": [item["url"] for item in items],
         }
 
     # ── 落库：原始材料进数据库 ───────────────────────────────────────────
@@ -282,12 +317,13 @@ def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[
     digest = output.strip()
     items = []
     for url in collect_sources(channel, output):
+        line = _row_for(channel, url, output) or digest
         items.append(
             ResearchItem(
                 source=channel,
                 url=url,
-                title="/".join(url.rstrip("/").split("/")[-2:]) if channel == "github" else "",
-                content=_row_for(channel, url, output) or digest,
+                title=_item_title(channel, url, line),
+                content=line,
                 query=query,
                 topic=topic,
             )
@@ -295,11 +331,24 @@ def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[
     return items
 
 
+def _item_title(channel: str, url: str, line: str) -> str:
+    """GitHub 行给仓库名，X 行给推文文本（tab 分隔的最后一段）。"""
+    if channel == "github":
+        return "/".join(url.rstrip("/").split("/")[-2:])
+    if channel == "x":
+        parts = line.split("\t")
+        return parts[-1][:60] if len(parts) > 1 else ""
+    return ""
+
+
 def _row_for(channel: str, url: str, output: str) -> str:
-    """GitHub TSV 之类的行式输出：每个来源只留它自己那一行，不共享整段输出。"""
-    if channel != "github":
+    """行式输出（GitHub TSV、X 结果行）：每个来源只留它自己那一行，不共享整段输出。"""
+    if channel == "github":
+        key = "/".join(url.rstrip("/").split("/")[-2:]) if "github.com/" in url else url
+    elif channel == "x":
+        key = url
+    else:
         return ""
-    key = "/".join(url.rstrip("/").split("/")[-2:]) if "github.com/" in url else url
     for line in output.splitlines():
         if key and key in line:
             return line.strip()

@@ -322,6 +322,31 @@ ContentAgent(store=…, memory=…, drafter=None).run("写 Thread", {"recommenda
 - 状态机拒绝（如缺必填字段）会被 Agent 转成可解释的 `errors`，状态停在原地，不崩溃。
 - `REVIEW` 不强制 claims：空断言清单 = 无可核查项，`fact_check.checked == 0` 会如实显示。
 
+## X Layer（Phase 10）
+
+`runtime/x_adapter.py`：**所有 X API 逻辑只允许出现在这个文件**（PLAN Phase 10）。
+
+```python
+from runtime.x_adapter import XAdapter
+
+adapter = XAdapter(backend=..., dry_run=True)
+adapter.search(query, limit)      # / timeline() / mentions() / analytics(post_id)
+adapter.post(text)                # 默认 dry_run：只回显，不真实发送
+adapter.thread(posts)             # 逐条发送，中途失败立即停并报告已发条数
+adapter.schedule(text, at)
+```
+
+| 设计 | 说明 |
+| --- | --- |
+| 后端可注入 | `backend` 需提供同名方法并返回 `{"ok": ...}`；**未配置时所有调用返回 `ok=False` + 明确提示**，不假装成功 |
+| 默认演练 | 写操作默认 `dry_run=True`，真实发送必须显式 `dry_run=False`（对外操作由上层把关） |
+| X 规则 | 单条 ≤280、Thread ≤20 条、空内容拒绝，校验在后端之前 |
+| 字段归一化 | 后端返回的 `id_str/screen_name/full_text/created_at` 统一成 `url/author/text/time` |
+
+`ReachResearch` 新增 `channel="x"`（Research X）：走 `XAdapter.search`，推文文本作为材料 title、每条推文只留自己那一行进 `ResearchStore`；未配置后端时 `fetch/harvest` 返回可解释失败。
+
+**当前状态**：本机 X 渠道未解锁、x-mcp 未配置 → `backend` 尚未接入（安装需要 X 登录，等确认后注入 `McporterXBackend`）。
+
 ## 如何运行 demo
 
 ```bash
