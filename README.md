@@ -512,6 +512,42 @@ PLAN 口径的采集项：`views / likes / comments / reposts / bookmarks / foll
 
 **已知边界**：六平台还没有真实指标读 API，`getAnalytics()` 仍是契约占位；X 的 `analytics` 走 `OpenCliXBackend` / `TwitterCliXBackend`（会带上 `is_retweet` 与 `publish_time` 供归属判定）。本层只负责收数和落盘，**不做任何策略解释**——那是 Phase 17 Analytics Agent 的事。
 
+## Analytics Agent（Phase 17）
+
+`runtime/analytics_agent.py` + `agents/analytics.py`：把表现数据变成「候选洞察 + 待确认的策略候选」。**只分析、只提案，不修改任何策略。**
+
+```python
+from agents import AnalyticsAgent
+from runtime.analytics_store import AnalyticsStore
+from runtime.memory_api import MemoryAPI
+
+agent = AnalyticsAgent(memory=MemoryAPI(), store=AnalyticsStore("data/analytics.sqlite3"))
+result = agent.run("分析最近内容表现", {"limit": 50})   # write_memory=False 可只出报告
+
+result["patterns"]             # 分组事实（content_type）：样本量、平均互动率、采集窗口
+result["insights"]             # 候选洞察：statement / confidence / evidence / blockers / ready
+result["strategy_candidates"]  # status="PROPOSED"、applied=False
+result["memory_writes"]        # 只写 pending「观察」
+```
+
+流程（PLAN Phase 17）与闸门：
+
+```
+Analytics → Pattern Detection → Insight Candidate → Evidence Check → Memory → Strategy Candidate
+   ↑ 只算事实      ↑ 观察式陈述（带样本量与窗口）    ↑ 不过就只报告原因：不写记忆、不产候选
+```
+
+| 边界 | 说明 |
+| --- | --- |
+| 不改策略 | 策略侧只产出 `StrategyCandidate(status="PROPOSED", applied=False)`；本层没有任何写 Strategy 的方法，改策略必须人工 `memory.update("strategy", ...)` + `recordDecision` 写清变更原因 |
+| 说事实不说指令 | 陈述形如「最近 6 条内容里，「thread」类 3 条平均互动率 10.00%，其余可比类型 2.00%（差 +8.00%）」，**不写**「以后全做 thread」 |
+| 证据闸门 | 有 views 的样本 < 3、缺少对比组、低于其余类型平均、`content_type` 未标注、无可回溯 `post_id` → `ready=False`，报告里写明拦下原因 |
+| 置信度与入库 | 样本 ≥10 才给「中」，否则「低」，**永远不产生「高」**；写入记忆的是 `status=观察`（frontmatter `pending`），要走 Memory Review 才能升级为已验证 Insight |
+| 只看自己内容 | 转发快照（`attributed=False`）由 `AnalyticsStore.recent()` 排除；同一 post 只取最新一条快照 |
+| 分组维度 | 当前只按 `content_type`：六平台指标读 API 还没接，按平台分组必然只有一类，没有参照 |
+
+**已知边界**：洞察质量受制于 Phase 16 的数据量——没有真实发布与采集就没有候选；分组维度将来接入 topic / 平台后需要重新评估样本门槛。
+
 ## 如何运行 demo
 
 ```bash
