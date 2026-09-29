@@ -616,7 +616,9 @@ class CreatorMemoryLayer:
     def archive(self, category: str, title: str) -> dict[str, Any]:
         """把一条记忆移入 99-Archive，并把 frontmatter status 改为 archived。"""
         spec = self._spec(category)
-        source = self.vault_path / spec.folder / f"{title}.md"
+        # 走 note_path：标题里的 `:` 等字符写入时会被 _safe_filename 换掉，
+        # 手工拼路径会导致「写得进去、找不到文件」，驳回复核直接 FileNotFoundError。
+        source = self.exporter.note_path(spec.folder, title)
         if not source.exists():
             raise FileNotFoundError(f"找不到记忆：{source}")
         target_dir = self.vault_path / ARCHIVE_FOLDER / spec.folder

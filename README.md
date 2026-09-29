@@ -238,6 +238,7 @@ TopicEngine().recommend(candidates, top_k=5)
 | 字段 | 来源 |
 | --- | --- |
 | `topic / sources / evidence / freshness` | Phase 5 候选 |
+| `facts` | Phase 5 的事实线索，直接进 Phase 9 Content Agent 的 `claims`（否则事实核查永远空转） |
 | `angles` | 按分类查表（记忆系统/AI 工具/内容创作/平台运营/数据增长/未分类 各 3 个角度） |
 | `audience` | **只取 Account Memory 的目标受众**，没有就 `UNKNOWN` |
 | `competition` | 恒为 `UNKNOWN`：没有竞争数据，不编造（接 X 数据后再算） |
@@ -547,6 +548,37 @@ Analytics → Pattern Detection → Insight Candidate → Evidence Check → Mem
 | 分组维度 | 当前只按 `content_type`：六平台指标读 API 还没接，按平台分组必然只有一类，没有参照 |
 
 **已知边界**：洞察质量受制于 Phase 16 的数据量——没有真实发布与采集就没有候选；分组维度将来接入 topic / 平台后需要重新评估样本门槛。
+
+## 核心闭环（Phase 18）
+
+`agents/feedback_loop.py`：把 Phases 5→17 串成一圈。**每个阶段要么真跑了、要么被人审闸门挡住、要么如实说缺什么，绝不把没跑的阶段写成成功。**
+
+```python
+from agents import FeedbackLoop
+
+loop = FeedbackLoop(memory=…, analytics_store=…, content_agent=…, collector=…, worker=…)
+result = loop.run("本轮闭环", {"materials": [...]})      # 也可传 {"recommendations": [...]} 跳过调研
+result["steps"]          # PLAN 顺序：research → strategy → content → publish → analytics → insight → memory → strategy
+result["counts"]         # {"ran": …, "gated": …, "skipped": …, "failed": …}
+result["next_actions"]   # 人审 / 复核 / 策略候选 三条闸门提示
+loop.review_insight(title, approved=True, reason="样本量达标")   # Memory Review 闸门
+```
+
+| 阶段结果 | 含义 |
+| --- | --- |
+| `ran` | 真跑了，`data` 里有结果 |
+| `gated` | 有输入但被闸门挡住（内容停在 REVIEW、发布等人审） |
+| `skipped` | 缺输入或缺能力，`summary` 写清缺什么（如「调研要联网，本轮不自动发起」） |
+| `failed` | 阶段异常，如实报错，`result["ok"]=False` |
+
+- **圈是真闭合**：这轮 Analytics Agent 写进记忆的观察，会在收尾的 `strategy` 阶段被 `StrategyAgent.memory_context()` 读回来（`feedback.data.insight_notes`），下一轮策略判断直接拿它当输入。
+- **人审闸门原样保留**：Content 最多到 REVIEW；Publish 遇到 IDEA/RESEARCHED/DRAFT/REVIEW 直接 `gated`；洞察写的是 pending 观察；策略候选永远 `PROPOSED`；`review_insight(approved=False)` 会把观察归档。
+- **本层不写 Strategy**：只读 `memory_context()`；改策略必须人工 `memory.update("strategy", …)` + `recordDecision`。
+
+**本阶段顺手修掉的两个闭环断点**：
+
+1. `TopicEngine` 的推荐丢掉了 `facts`，`ContentAgent` 的 `fact_check` 在真实链路里永远空转；现在 `TopicRecommendation` 携带 `facts`，断言能回到证据摘录（有回归测试）。
+2. `CreatorMemoryLayer.archive()` 手工拼文件名，标题含 `:`（如 Phase 17 的 `content_type:thread`）时写得进去却找不到文件，**驳回复核直接 `FileNotFoundError`**；现在统一走 `note_path()` 的文件名清洗。
 
 ## 如何运行 demo
 

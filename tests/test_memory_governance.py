@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from runtime.creator_memory import confidence_level
+from runtime.creator_memory import CATEGORY_BY_KEY, confidence_level
 from runtime.memory_api import MemoryAPI
 
 ACCOUNT = {
@@ -138,6 +138,23 @@ def test_review_rejection_archives_the_note(tmp_path):
     assert archived.exists()
     assert "status: archived" in archived.read_text(encoding="utf-8")
     assert "样本量不足" in archived.read_text(encoding="utf-8")
+
+
+def test_review_rejection_handles_titles_with_unsafe_characters(tmp_path):
+    """回归：标题含 `:`（Phase 17 主题命名 content_type:thread）时，驳回复核不能找不到文件。"""
+    memory = make_api(tmp_path)
+    record = memory.recordObservation(topic="content_type:thread",
+                                      observation="thread 互动更高", evidence="3 条对比")
+    title = record["title"]
+    source = memory.layer.exporter.note_path(CATEGORY_BY_KEY["insight"].folder, title)
+    assert source.exists()                                   # 写入时 `:` 已被换成 `-`
+
+    memory.review("insight", title, approved=False, reason="样本不足")
+
+    assert memory.get("insight", title)["ok"] is False
+    archived = tmp_path / "99-Archive" / source.parent.name / source.name
+    assert archived.exists()
+    assert "status: archived" in archived.read_text(encoding="utf-8")
 
 
 def test_supersede_marks_note_and_requires_reason(tmp_path):

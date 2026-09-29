@@ -59,6 +59,7 @@ class TopicRecommendation:
     audience: str = UNKNOWN
     sources: list[str] = field(default_factory=list)
     evidence: list[dict[str, str]] = field(default_factory=list)
+    facts: list[str] = field(default_factory=list)   # 事实线索：Phase 9 Content Agent 的 claims 来源
     freshness: str = UNKNOWN
     competition: str = UNKNOWN
     account_fit: str = UNKNOWN
@@ -141,6 +142,7 @@ class TopicEngine:
             audience=account.get("受众") or UNKNOWN,
             sources=sources,
             evidence=evidence,
+            facts=facts,
             freshness=freshness,
             account_fit=fit,
             content_type=CONTENT_TYPE_BY_CATEGORY.get(category, "X Post"),
