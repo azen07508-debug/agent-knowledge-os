@@ -33,7 +33,8 @@ def make_env(tmp_path, script=None, reconcile_result="auto", adapters=None, **wo
     adapter_map = adapters or {PLATFORM: MockPublishAdapter(
         platform=PLATFORM, script=script or [], reconcile_result=reconcile_result
     )}
-    worker = PublishWorker(store, adapter_map, builder, default_delay=0, **worker_kwargs)
+    worker = PublishWorker(store, adapter_map, builder, default_delay=0,
+                           log_path=tmp_path / "publish_log.jsonl", **worker_kwargs)
     return store, worker, (adapter_map.get(PLATFORM) if mock else None)
 
 
@@ -154,7 +155,8 @@ def run_to_timeout(tmp_path, script):
     job = enqueue(store)
     worker.run_once()
     reconciler = Reconciler(store, {PLATFORM: mock},
-                            lambda j: get_formatter(PLATFORM).format(make_post()))
+                            lambda j: get_formatter(PLATFORM).format(make_post()),
+                            log_path=tmp_path / "publish_log.jsonl")
     return store, job, mock, reconciler
 
 
@@ -209,7 +211,8 @@ def test_reconciler_requires_pending_timeout_status(tmp_path):
     job = enqueue(store)
     worker.run_once()                          # 直接成功的 job
     reconciler = Reconciler(store, {PLATFORM: mock},
-                            lambda j: get_formatter(PLATFORM).format(make_post()))
+                            lambda j: get_formatter(PLATFORM).format(make_post()),
+                            log_path=tmp_path / "publish_log.jsonl")
 
     result = reconciler.reconcile(job.id)
 
@@ -305,7 +308,8 @@ def test_mock_end_to_end_flow(tmp_path):
     mock = MockPublishAdapter(platform=PLATFORM)
     post = CanonicalPost.from_content_object(obj)
     formatted = get_formatter(PLATFORM).format(post)
-    worker = PublishWorker(store, {PLATFORM: mock}, lambda job: formatted, default_delay=0)
+    worker = PublishWorker(store, {PLATFORM: mock}, lambda job: formatted, default_delay=0,
+                           log_path=tmp_path / "publish_log.jsonl")
 
     job, created = store.enqueue(obj.id, PLATFORM, fingerprint=formatted.fingerprint)
     assert created is True
@@ -354,7 +358,8 @@ def test_builder_error_fails_without_retry(tmp_path):
 
     store = PublishJobStore(tmp_path / "publish.sqlite3")
     worker = PublishWorker(store, {PLATFORM: MockPublishAdapter(platform=PLATFORM)},
-                           broken_builder, default_delay=0)
+                           broken_builder, default_delay=0,
+                           log_path=tmp_path / "publish_log.jsonl")
     job = enqueue(store)
 
     result = worker.run_once()
@@ -362,3 +367,41 @@ def test_builder_error_fails_without_retry(tmp_path):
     assert result is not None and result["status"] == "FAILED" and result["error_class"] == "BUILDER_ERROR"
     assert len(store.attempts(job.id)) == 1
     assert worker.run_once() is None
+
+
+def test_every_publish_action_writes_log(tmp_path):
+    """PLAN Phase 15：所有发布行为必须记录日志（执行与对账各记一行）。"""
+    import json as _json
+
+    log = tmp_path / "publish_log.jsonl"
+    store, worker, _ = make_env(
+        tmp_path, script=[{"ok": False, "error_code": "400", "error_message": "bad param"}]
+    )
+    job = enqueue(store)
+
+    worker.run_once()                                   # 失败执行 → 一行
+    rows = [_json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 1
+    assert rows[0]["kind"] == "publish" and rows[0]["job_id"] == job.id
+    assert rows[0]["ok"] is False and rows[0]["status"] == "FAILED"
+    assert rows[0]["error_class"] == "INVALID_PARAM" and rows[0]["at"]
+
+    worker.run_once()                                   # 队列空 → 不产生日志
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_reconcile_action_writes_log(tmp_path):
+    """对账行为同样必须记日志。"""
+    import json as _json
+
+    log = tmp_path / "publish_log.jsonl"
+    _store, job, _, reconciler = run_to_timeout(tmp_path, [
+        {"ok": False, "error_code": "TIMEOUT", "_actually_posted": True},
+    ])
+    reconciler.log_path = log                            # 指到本次 tmp 日志
+
+    reconciler.reconcile(job.id)
+
+    rows = [_json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert rows[-1]["kind"] == "reconcile" and rows[-1]["ok"] is True
+    assert rows[-1]["status"] == "SUCCEEDED" and rows[-1]["job_id"] == job.id

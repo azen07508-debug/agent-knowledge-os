@@ -477,6 +477,41 @@ PublishJob：QUEUED → RUNNING → SUCCEEDED
 
 **已知边界**：六平台 `PublishAdapter` 是 Contract-Only 实现——`validate` 走真实契约校验，`publish/reconcile` 返回 `NOT_IMPLEMENTED`（Job 会诚实落到 FAILED，不重试）；测试与端到端流程用 `MockPublishAdapter`（可编排超时/5xx/「超时但实际已发出」等真实世界剧本）。
 
+**发布日志（PLAN Phase 15「所有发布行为必须记录日志」）**：`PublishWorker.run_once()` 与 `Reconciler.reconcile()` 每次执行都往 `data/publish_log.jsonl` 追加一行（`kind=publish|reconcile`、job/content/platform、attempt_no、status、ok、error_class、post_id）。日志写失败不冒充发布失败——结果照常如实返回。测试里用 `log_path=` 指到临时目录。
+
+## 表现数据（Phase 16）
+
+`runtime/post_analytics.py` + `runtime/analytics_store.py` + `runtime/analytics_collector.py`：发布之后收集表现指标。**只存拿到的数：backend 缺的字段不填、算不出来的率就是 `None`、采集失败不写空快照。**
+
+```python
+from runtime.analytics_collector import AnalyticsCollector
+from runtime.analytics_store import AnalyticsStore
+from runtime.publish_queue import PublishJobStore
+from runtime.x_adapter import default_x_adapter
+
+store = AnalyticsStore("data/analytics.sqlite3")
+collector = AnalyticsCollector(store, x=default_x_adapter(),
+                               publish_store=PublishJobStore("data/publish.sqlite3"))
+
+collector.collect("2104696280136221102", content_id="c1", content_type="thread")  # 单条
+collector.collect_content("c1")        # 从 Phase 15 成功 job 的 attempt 取 published_post_id
+collector.collect_published(limit=20)  # 批量：最近成功发布的 job（Phase 15 → 16 衔接）
+store.recent()                         # 每 post 最新一条快照，给 Phase 17 模式识别用
+```
+
+PLAN 口径的采集项：`views / likes / comments / reposts / bookmarks / followers / engagement / publish_time / content_type`。
+
+| 设计 | 说明 |
+| --- | --- |
+| 字段归一 | backend 字段差异在 `normalize_metrics()` 抹平（`replies`→`comments`、`retweets`→`reposts`、`impression_count`→`views`）；解析不了的值丢弃，不猜 |
+| 互动率 | `（likes+comments+reposts+bookmarks）/ views`；views 缺失或为 0 → `None`（不算也不编）；存储不四舍五入，格式化留给展示层 |
+| 转发归属 | `is_retweet=True` → `attributed=False`：转发的互动数属于原作者，默认查询（`history/latest/by_content/recent`）自动排除，原始数仍留档可回溯 |
+| 快照不覆盖 | 同一 post 多次采集 = 多行（按 `collected_at` 排序），能看趋势；`recent()` 每 post 去重到最新一条 |
+| 发布记录对齐 | 采集来源优先取 Phase 15 `SUCCEEDED` job 的 `attempt.published_post_id`，保证「发布 ↔ 表现」对得上；没有发布记录时如实报 `ok=False` |
+| 诚实降级 | 六平台 `CONTRACT_ONLY` → `error_code=NOT_IMPLEMENTED`；X 后端未配置 → 明确失败 |
+
+**已知边界**：六平台还没有真实指标读 API，`getAnalytics()` 仍是契约占位；X 的 `analytics` 走 `OpenCliXBackend` / `TwitterCliXBackend`（会带上 `is_retweet` 与 `publish_time` 供归属判定）。本层只负责收数和落盘，**不做任何策略解释**——那是 Phase 17 Analytics Agent 的事。
+
 ## 如何运行 demo
 
 ```bash

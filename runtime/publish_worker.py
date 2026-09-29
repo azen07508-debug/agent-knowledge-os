@@ -10,14 +10,31 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from runtime.platform_formatter import FormattedPayload
 from runtime.publish_adapters import PublishAdapter
 from runtime.publish_queue import TS, PublishJob, PublishJobStore
 from runtime.retry_policy import TIMEOUT, classify, decide_retry
+
+# PLAN Phase 15「所有发布行为必须记录日志」：每次执行/对账追加一行 JSONL。
+DEFAULT_PUBLISH_LOG = Path(__file__).resolve().parents[1] / "data" / "publish_log.jsonl"
+
+
+def append_publish_log(record: Mapping[str, Any], log_path: Path | None = None) -> None:
+    """追加一条发布日志；日志写失败不冒充发布失败（吞 OSError，结果仍如实返回）。"""
+    path = log_path or DEFAULT_PUBLISH_LOG
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        row = {"at": datetime.now().strftime(TS), **dict(record)}
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 
 class PublishWorker:
@@ -32,6 +49,7 @@ class PublishWorker:
         max_attempts: int = 3,
         default_delay: int = 60,
         clock: Callable[[], datetime] | None = None,
+        log_path: Path | None = None,
     ) -> None:
         self.store = store
         self.adapters = dict(adapters)
@@ -39,16 +57,33 @@ class PublishWorker:
         self.max_attempts = max_attempts
         self.default_delay = default_delay
         self._clock = clock or datetime.now
+        self.log_path = log_path or DEFAULT_PUBLISH_LOG
 
     def _now(self) -> datetime:
         return self._clock()
 
     def run_once(self) -> dict[str, Any] | None:
-        """取一个到期 job 执行；没有到期 job 返回 None。"""
+        """取一个到期 job 执行；没有到期 job 返回 None。执行结果必落发布日志。"""
         job = self.store.claim_next(self._now().strftime(TS))
         if job is None:
             return None
-        return self._execute(job)
+        result = self._execute(job)
+        append_publish_log(
+            {
+                "kind": "publish",
+                "job_id": job.id,
+                "content_id": job.content_id,
+                "platform": job.platform,
+                "attempt_no": result.get("attempt_no"),
+                "status": result.get("status"),
+                "ok": bool(result.get("ok")),
+                "error_class": result.get("error_class", ""),
+                "post_id": result.get("post_id", ""),
+                "message": result.get("message") or result.get("reason", ""),
+            },
+            self.log_path,
+        )
+        return result
 
     # ── 执行 ──────────────────────────────────────────────────────────────
 
@@ -146,14 +181,31 @@ class Reconciler:
         *,
         window_minutes: int = 2,
         clock: Callable[[], datetime] | None = None,
+        log_path: Path | None = None,
     ) -> None:
         self.store = store
         self.adapters = dict(adapters)
         self.builder = builder
         self.window = timedelta(minutes=window_minutes)
         self._clock = clock or datetime.now
+        self.log_path = log_path or DEFAULT_PUBLISH_LOG
 
     def reconcile(self, job_id: str) -> dict[str, Any]:
+        result = self._reconcile(job_id)
+        append_publish_log(
+            {
+                "kind": "reconcile",
+                "job_id": job_id,
+                "status": result.get("status", ""),
+                "attempt_status": result.get("attempt_status", ""),
+                "ok": bool(result.get("ok")),
+                "message": result.get("message", ""),
+            },
+            self.log_path,
+        )
+        return result
+
+    def _reconcile(self, job_id: str) -> dict[str, Any]:
         job = self.store.get(job_id)
         if job is None:
             return {"ok": False, "message": f"job 不存在：{job_id}"}

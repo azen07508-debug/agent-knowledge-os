@@ -140,7 +140,21 @@ class TwitterCliXBackend:
         metrics = _metrics(_first_tweet(payload))
         if not metrics:
             return {"ok": False, "message": "推文数据里没有互动指标。"}
-        return {"ok": True, "metrics": metrics}
+        row = _first_tweet(payload)
+        return {
+            "ok": True,
+            "metrics": metrics,
+            "is_retweet": _is_retweet(row),
+            "publish_time": str(row.get("created_at") or ""),
+        }
+
+
+def _is_retweet(row: Mapping[str, Any]) -> bool:
+    """转发行的互动指标属于原作者，不算自己内容的表现（Phase 16 归属判定）。"""
+    if isinstance(row.get("is_retweet"), bool):
+        return row["is_retweet"]
+    text = str(row.get("text") or row.get("full_text") or "")
+    return text.startswith("RT @")
 
 
 def _default_run(argv: list[str], timeout: int, env: dict[str, str]):
