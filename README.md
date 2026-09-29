@@ -580,6 +580,38 @@ loop.review_insight(title, approved=True, reason="样本量达标")   # Memory R
 1. `TopicEngine` 的推荐丢掉了 `facts`，`ContentAgent` 的 `fact_check` 在真实链路里永远空转；现在 `TopicRecommendation` 携带 `facts`，断言能回到证据摘录（有回归测试）。
 2. `CreatorMemoryLayer.archive()` 手工拼文件名，标题含 `:`（如 Phase 17 的 `content_type:thread`）时写得进去却找不到文件，**驳回复核直接 `FileNotFoundError`**；现在统一走 `note_path()` 的文件名清洗。
 
+## 仪表盘（Phase 19）
+
+`runtime/dashboard.py` + `scripts/build_dashboard.py`：把各 store 与长期记忆聚合成**一页本地 HTML**（11 个页面，只读、不联网）。
+
+```bash
+python scripts/build_dashboard.py                 # → data/dashboard.html（双击打开）
+python scripts/build_dashboard.py --out /tmp/dash.html --limit 50
+```
+
+```python
+from runtime.dashboard import collect, render, write
+
+data = collect(limit=30)        # 11 个页面的 section（columns + rows + note）
+html = render(data)             # 单文件 HTML，无任何外部资源
+write("/tmp/dash.html", data)
+```
+
+| 页面 | 数据来源 |
+| --- | --- |
+| Dashboard | 首页九块：今日研究 / 热点 / 推荐选题 / 草稿 / 待审核 / 排期 / 最近发布 / 数据 / AI Insight |
+| Research | `ResearchStore`（Phase 4 抓取材料） |
+| Topics | 本地 `TopicEngine`（材料 → 候选 → 推荐 + 理由/阻塞） |
+| Content / Review | `ContentStore`（状态链、断言与证据计数、人审入口提示） |
+| Calendar / Publish | `PublishJobStore`（排期、attempts、post_id）+ `data/publish_log.jsonl` |
+| Analytics | `AnalyticsStore`（采集概览 + 最近快照） |
+| Memory / Accounts | `MemoryAPI`（分类计数、Memory Health、账号画像、当前策略） |
+| Settings | 本地路径 + 七平台能力现状（X 真实读写，其余 CONTRACT_ONLY） |
+
+- **只读**：`collect()` 不写数据、不写记忆、不跑发布；渲染时所有值都过 `html.escape`——研究标题里带 `<script>` 也只会显示成文本。
+- **无外部资源**：没有 CDN、没有 `fetch`，页面里唯一的 `<script>` 只做侧栏切页。
+- **诚实空态**：没数据的 section 显示「暂无数据」；来源没有互动数字时热点区明说「不编造热度」。
+
 ## 如何运行 demo
 
 ```bash
