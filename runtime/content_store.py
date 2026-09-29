@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
-from runtime.content_object import ContentObject, STATUSES
+from runtime.content_object import STATUSES, ContentObject
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "content.sqlite3"
 
@@ -139,7 +140,7 @@ class ContentStore:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "ContentStore":
+    def __enter__(self) -> ContentStore:
         return self
 
     def __exit__(self, *_exc: object) -> None:

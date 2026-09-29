@@ -12,8 +12,9 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 
 DEFAULT_CONFIG = Path.home() / ".agent-reach" / "config.yaml"
 

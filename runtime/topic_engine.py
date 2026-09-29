@@ -11,9 +11,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
 import re
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 from runtime.memory_api import MemoryAPI
 from runtime.topics import CATEGORIES, TopicCandidate

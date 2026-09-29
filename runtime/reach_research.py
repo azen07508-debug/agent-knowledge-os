@@ -12,11 +12,12 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from runtime.memory_api import MemoryAPI
-from runtime.research_store import CONTENT_CHARS, ResearchItem, ResearchStore
+from runtime.research_store import ResearchItem, ResearchStore
 from runtime.x_adapter import XAdapter, default_x_adapter
 
 DIGEST_CHARS = 1500

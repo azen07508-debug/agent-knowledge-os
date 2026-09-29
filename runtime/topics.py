@@ -10,9 +10,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 MAX_FACTS = 5
 MAX_OPINIONS = 3

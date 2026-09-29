@@ -21,3 +21,23 @@ dependencies = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# 项目约定：DTZ（naive 本地时间戳，全库字符串时间比较依赖它）与
+# BLE（后端异常必须兜底转成可解释失败，不许崩）是既有风格，不列为 lint 项；
+# RUF001-003（模糊 Unicode）会误伤中文注释/文档字符串，排除。
+select = ["E4", "E7", "E9", "F", "I", "UP", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# scripts 先做 sys.path 引导再 import，属有意为之
+"scripts/*" = ["E402"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true

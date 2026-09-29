@@ -3,7 +3,6 @@
 import pytest
 
 from runtime.content_object import (
-    STATUSES,
     ContentObject,
     idea_from_recommendation,
 )

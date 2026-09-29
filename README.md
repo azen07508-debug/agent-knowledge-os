@@ -409,6 +409,74 @@ adapter.get_analytics(draft.id)                  # 平台侧数据（需 backend
 | 演练闸门 | `dry_run=True` 是所有写操作默认值；演练先过 `validate`，失败连 backend 都不碰 |
 | 后端现状 | 六平台都还没接真实写后端：小红书可走 OpenCLI/xhs-cli（写未验证）、B站 bili-cli（投稿未接）、公众号/微博需开放平台凭据、视频号只有手工发布 |
 
+## 内容格式化（Phase 14）
+
+`runtime/canonical_post.py` + `runtime/platform_formatter.py`：`CanonicalPost → Platform Formatter → FormattedPayload`。同一个内容对象可以喂给任意平台，**不重新研究内容、不复制业务逻辑**。
+
+```python
+from runtime.canonical_post import CanonicalPost
+from runtime.platform_formatter import get_formatter
+
+post = CanonicalPost(title="…", body="…", tags=["AI"], media=["clip.mp4"], content_id="c1")
+formatted = get_formatter("xiaohongshu").format(post)   # douyin / bilibili / wechat_mp / weibo / channels / x
+formatted.payload      # 渲染后的平台字段形状（如小红书 {title, body, hashtags}，X {posts: [thread…]}）
+formatted.valid        # 契约校验是否通过（与 Phase 13 SPECS 同一套规则，共享 check_contract）
+formatted.errors       # 校验失败原因（超字数、缺标题、视频平台缺媒体）
+formatted.warnings     # 平台格式建议（缺配图、少于 N 字等），只提示不拦截
+formatted.metadata     # content_id / label / limits / dry_run / preview
+formatted.fingerprint  # sha256(platform + canonical json(payload))，跨进程稳定
+formatted.preview()    # 人类可读预览（审核界面）
+```
+
+| 设计 | 说明 |
+| --- | --- |
+| 平台契约唯一来源 | 字数上限/标题要求/媒体要求全部来自 `platform_adapter.SPECS` + 共享 `check_contract()`，Formatter 不允许自己另立规则 |
+| X Thread | 按 280 权重（中文 2/英文 1）贪心拆条，复用 `XAdapter` 的 `X_POST_LIMIT/X_THREAD_LIMIT`；>20 条报错 |
+| 平台特有规则 | 只在各 Formatter 的 `render()`：小红书/抖音/微博标签写进正文、B站/视频号标签走 `tags` 字段、B站/视频号/抖音必须有视频 |
+| 纯函数 | `format()` 无任何 I/O，默认 `dry_run=True`；本层不存在平台写操作，写操作只在 Phase 15 的 `PublishAdapter` |
+| 指纹 | 内容变/平台变 → 指纹变；同内容+同平台 → 指纹恒定，是 Phase 15 幂等键的输入 |
+
+## 发布队列（Phase 15）
+
+`runtime/publish_queue.py` + `runtime/retry_policy.py` + `runtime/publish_adapters.py` + `runtime/publish_worker.py`：平台无关的发布基础设施。**六个国内平台目前全部 CONTRACT_ONLY，不接真实写 API、不伪造成功。**
+
+```python
+from runtime.publish_queue import PublishJobStore
+from runtime.publish_adapters import get_publish_adapter      # 六平台 → ContractOnlyAdapter
+from runtime.publish_worker import PublishWorker, Reconciler
+
+store = PublishJobStore("data/publish.sqlite3")
+worker = PublishWorker(store, {"xiaohongshu": get_publish_adapter("xiaohongshu")}, builder)
+job, created = store.enqueue(content_id, "xiaohongshu", fingerprint=formatted.fingerprint)  # 幂等
+worker.run_once()                    # QUEUED → RUNNING → 成功/失败/超时
+Reconciler(store, adapters, builder).reconcile(job.id)   # 只对 TIMEOUT_UNVERIFIED/NEEDS_REVIEW 生效
+```
+
+**两个状态机严格分离**（Workflow 是 `ContentObject` 的 `DRAFT→REVIEW→APPROVED`，发布失败绝不改它）：
+
+```
+PublishJob：QUEUED → RUNNING → SUCCEEDED
+                          ↘ FAILED
+                          ↘ TIMEOUT_UNVERIFIED → RECONCILING → SUCCEEDED / FAILED / NEEDS_REVIEW
+            RETRYING → RUNNING（重试=新 attempt，attempt_no 递增，不覆盖旧记录）
+```
+
+**Retry 矩阵**（`runtime/retry_policy.py`，重试必须产生新 `PublishJobAttempt`）：
+
+| 错误类 | 重试 |
+| --- | --- |
+| 参数类 4xx / 鉴权 / 内容违规 / 重复内容 | 否 |
+| **TIMEOUT** | **否，必须先 reconcile**（状态机里没有 `TIMEOUT_UNVERIFIED → RETRYING` 这条边） |
+| NOT_IMPLEMENTED（contract-only 平台）/ 配置错误 / 不明确失败 | 否 |
+| 明确网络连接失败 / 5xx | 是（延迟进 `scheduled_at`） |
+| rate limit | 是，按 `retry_after`；没有就按平台默认 |
+
+**TIMEOUT 对账**（独立流程，不自动触发）：用 `request_fingerprint` / `provider_request_id` / 发布时间窗 / 内容摘要查平台记录——命中 → `RECONCILED_SUCCESS` + Job `SUCCEEDED`；确认不存在 → `RECONCILED_FAILED` + Job `FAILED`；无法确定 → `NEEDS_REVIEW`（可人工重跑对账，**禁止自动 retry**）。全程 Workflow 保持 `APPROVED`。
+
+**幂等**：`idempotency_key = sha256(content_id|platform|fingerprint)` 加 UNIQUE 约束，worker 重启后重复入队不会产生第二个 job；已认领（RUNNING）的 job 也不会被重启后的 worker 重复执行。
+
+**已知边界**：六平台 `PublishAdapter` 是 Contract-Only 实现——`validate` 走真实契约校验，`publish/reconcile` 返回 `NOT_IMPLEMENTED`（Job 会诚实落到 FAILED，不重试）；测试与端到端流程用 `MockPublishAdapter`（可编排超时/5xx/「超时但实际已发出」等真实世界剧本）。
+
 ## 如何运行 demo
 
 ```bash

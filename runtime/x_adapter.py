@@ -10,7 +10,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 X_POST_LIMIT = 280
 X_THREAD_LIMIT = 20
@@ -143,17 +144,16 @@ class XAdapter:
 
 def default_x_adapter(
     config_path: str | None = None,
-    which: "Callable[[str], Any] | None" = None,
-) -> "XAdapter":
+    which: Callable[[str], Any] | None = None,
+) -> XAdapter:
     """探测可用后端：OpenCLI（浏览器登录态）优先，其次 twitter-cli 凭据；都没有就返回未配置的 adapter（不假装成功）。"""
     from runtime.opencli_x_backend import OpenCliXBackend
     from runtime.twitter_backend import TwitterCliXBackend
 
-    opencli = OpenCliXBackend(**({"which": which} if which else {}))
+    opencli = OpenCliXBackend(which=which) if which else OpenCliXBackend()
     if opencli.available:
         return XAdapter(backend=opencli)
-    kwargs = {"config_path": config_path} if config_path else {}
-    twitter = TwitterCliXBackend(**kwargs)
+    twitter = TwitterCliXBackend(config_path=config_path) if config_path else TwitterCliXBackend()
     return XAdapter(backend=twitter if twitter.available else None)
 
 

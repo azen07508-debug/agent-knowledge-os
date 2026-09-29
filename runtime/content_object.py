@@ -13,9 +13,10 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any
 
 STATUSES: tuple[str, ...] = (
     "IDEA",
@@ -155,7 +156,7 @@ class ContentObject:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> "ContentObject":
+    def from_dict(cls, data: Mapping[str, Any]) -> ContentObject:
         known = {field_name for field_name in cls.__dataclass_fields__}
         return cls(**{key: value for key, value in data.items() if key in known})
 

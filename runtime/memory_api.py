@@ -22,13 +22,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from runtime.creator_memory import (
-    CONFIDENCE_LEVEL,
     CATEGORY_BY_KEY,
+    CONFIDENCE_LEVEL,
     STATUS,
     UNKNOWN_SOURCE,
     CreatorMemoryLayer,

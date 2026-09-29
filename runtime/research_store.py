@@ -11,10 +11,11 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "research.sqlite3"
 
@@ -151,7 +152,7 @@ class ResearchStore:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "ResearchStore":
+    def __enter__(self) -> ResearchStore:
         return self
 
     def __exit__(self, *_exc: object) -> None:

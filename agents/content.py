@@ -10,7 +10,8 @@ APPROVED 永远由人来点。不接 LLM key，起草默认走规则，可注入
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Mapping
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from agents.base_agent import BaseAgent
 from runtime.content_draft import (

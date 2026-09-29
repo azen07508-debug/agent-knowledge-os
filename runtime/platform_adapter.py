@@ -14,9 +14,10 @@ PLAN 接口 → 代码（snake_case，与 XAdapter 一致）：
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any
 from uuid import uuid4
 
 # ── 平台规格 ────────────────────────────────────────────────────────────
@@ -75,6 +76,42 @@ class Draft:
             self.created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def check_contract(
+    spec: PlatformSpec,
+    *,
+    title: str,
+    body: str,
+    tags: list[str] | tuple[str, ...],
+    media: list[str] | tuple[str, ...],
+    limits: Mapping[str, int] | None = None,
+) -> list[str]:
+    """按平台契约（SPECS）校验字段，返回错误列表（空 = 通过）。
+
+    这是全项目唯一的平台规则实现：PlatformAdapter.validate 和
+    PlatformFormatter 都调它，不允许各自再写一套。
+    """
+    merged = dict(spec.limits)
+    merged.update(limits or {})
+
+    errors: list[str] = []
+    if not (body or "").strip():
+        errors.append("正文为空。")
+    if spec.requires_title and not (title or "").strip():
+        errors.append(f"{spec.label}需要标题。")
+    title_max = merged.get("title_max", 0)
+    if title_max and len(title or "") > title_max:
+        errors.append(f"标题 {len(title or '')} 字，超过 {spec.label} 上限 {title_max} 字。")
+    body_max = merged.get("body_max", 0)
+    if body_max and len(body or "") > body_max:
+        errors.append(f"正文 {len(body or '')} 字，超过 {spec.label} 上限 {body_max} 字。")
+    tag_max = merged.get("tag_max", 0)
+    if tag_max and len(tags) > tag_max:
+        errors.append(f"标签 {len(tags)} 个，超过 {spec.label} 上限 {tag_max} 个。")
+    if spec.requires_media and not media:
+        errors.append(f"{spec.label}是视频平台，必须有媒体文件。")
+    return errors
+
+
 # ── 基类 ────────────────────────────────────────────────────────────────
 
 
@@ -130,24 +167,14 @@ class PlatformAdapter:
         errors: list[str] = []
         if draft.platform != self.platform:
             errors.append(f"平台不符：草稿是 {draft.platform}，适配器是 {self.platform}。")
-
-        limits = self.limits
-        if not draft.body.strip():
-            errors.append("正文为空。")
-        if self.spec.requires_title and not draft.title.strip():
-            errors.append(f"{self.label}需要标题。")
-        title_max = limits.get("title_max", 0)
-        if title_max and len(draft.title) > title_max:
-            errors.append(f"标题 {len(draft.title)} 字，超过 {self.label} 上限 {title_max} 字。")
-        body_max = limits.get("body_max", 0)
-        if body_max and len(draft.body) > body_max:
-            errors.append(f"正文 {len(draft.body)} 字，超过 {self.label} 上限 {body_max} 字。")
-        tag_max = limits.get("tag_max", 0)
-        if tag_max and len(draft.tags) > tag_max:
-            errors.append(f"标签 {len(draft.tags)} 个，超过 {self.label} 上限 {tag_max} 个。")
-        if self.spec.requires_media and not draft.media:
-            errors.append(f"{self.label}是视频平台，必须有媒体文件。")
-
+        errors += check_contract(
+            self.spec,
+            title=draft.title,
+            body=draft.body,
+            tags=draft.tags,
+            media=draft.media,
+            limits=self._limits,
+        )
         return {"ok": not errors, "platform": self.platform, "errors": errors}
 
     # ── publish / schedule ────────────────────────────────────────────────

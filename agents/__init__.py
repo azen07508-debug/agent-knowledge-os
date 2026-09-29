@@ -9,11 +9,11 @@ from agents.strategist import StrategyAgent
 from agents.x_workflow import XWorkflow
 
 __all__ = [
+    "CoderAgent",
+    "ContentAgent",
     "PlannerAgent",
     "ResearcherAgent",
-    "CoderAgent",
     "ReviewerAgent",
     "StrategyAgent",
-    "ContentAgent",
     "XWorkflow",
 ]

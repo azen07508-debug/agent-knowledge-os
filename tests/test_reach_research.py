@@ -130,7 +130,9 @@ def test_research_merges_caller_sources_before_fetched_ones(tmp_path):
     record = reach.research(topic="Agent-Reach", conclusions=["c"], query="q", sources="https://hand-written.example/1")
     text = (tmp_path / "11-Research" / "研究-Agent-Reach.md").read_text(encoding="utf-8")
 
-    sources_line = [line for line in text.splitlines() if line.startswith("- https://hand-written")][0]
+    sources_line = next(
+        (line for line in text.splitlines() if line.startswith("- https://hand-written")), ""
+    )
     assert sources_line.startswith("- https://hand-written.example/1")
     assert record["fetched"]["sources"][0] == "https://hand-written.example/1"
 

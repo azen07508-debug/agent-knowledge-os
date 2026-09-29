@@ -1,6 +1,6 @@
 """Phase 10：XAdapter（全部 X API 逻辑的唯一入口）。"""
 
-from runtime.x_adapter import NOT_CONFIGURED, XAdapter
+from runtime.x_adapter import XAdapter
 
 TWEET = "冷暖热三层结构，热层 3 条规则 https://example.com/pic"
 

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from agents import StrategyAgent
 from runtime.memory_api import MemoryAPI
-from runtime.strategy import VERDICT_RECOMMEND, VERDICT_REJECT, VERDICT_JUDGE
+from runtime.strategy import VERDICT_JUDGE, VERDICT_RECOMMEND, VERDICT_REJECT
 from runtime.topic_engine import TopicEngine
 from runtime.topics import TopicCandidate
 

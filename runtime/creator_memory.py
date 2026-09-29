@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from runtime.everos_memory import DEFAULT_OWNER_ID, EverOSMemory
 from runtime.obsidian_exporter import ObsidianExporter, parse_note

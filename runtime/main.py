@@ -9,7 +9,6 @@ from runtime.arbiter_guard import ArbiterGuard
 from runtime.everos_memory import EverOSMemory
 from runtime.obsidian_exporter import ObsidianExporter
 
-
 DEMO_TASK = "分析 EverOS + Arbiter + Obsidian 如何结合，构建 Codex 驱动的 AI 知识库系统"
 
 

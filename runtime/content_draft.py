@@ -8,7 +8,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 X_POST_LIMIT = 280
 """X 单条上限。"""

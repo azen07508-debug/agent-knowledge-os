@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from typing import Any, Callable, Mapping
+from collections.abc import Callable, Mapping
+from typing import Any
 
 OPENCLI_BIN = "opencli"
 NO_SCHEDULE = "opencli 不支持定时发布；定时排期由 Phase 15 PublishJob 承担。"

@@ -8,8 +8,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, is_dataclass
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 from agents.base_agent import BaseAgent
 from runtime.reach_research import ReachResearch
