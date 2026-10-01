@@ -635,6 +635,25 @@ sections = collect(memory)        # 7 个 section，与 Phase 19 dashboard 同�
 - **只读**：不写记忆、不改状态、不替人复核；没有数据的视图 rows 为空，页面显示「暂无数据」，体检计数为空库如实显示 0。
 - **Accounts 页改为「平台账号」**：各平台能力（X 真实读写 / 六平台 CONTRACT_ONLY）+ 发过内容数 + 发布作业数；账号画像与策略不再重复，统一在 Memory 页前两个视图。
 
+## 自动化 Agent（Phase 21）
+
+PLAN 的每日流程 `09:00 Research → Topic → Strategy → Content → Human Review → Publisher → Analytics → Memory → 第二天继续`，入口是 `scripts/run_daily.py`（定时交给 cron/launchd，本项目不内置常驻进程）。
+
+```bash
+python scripts/run_daily.py                     # 默认全本地：不联网、不外发、不采集
+python scripts/run_daily.py --materials m.json  # 用本地材料调研（不联网）
+python scripts/run_daily.py --research github   # 显式允许联网调研
+python scripts/run_daily.py --topic "选题名"     # 人工指定今天做哪题（无「推荐」结论时）
+python scripts/run_daily.py --publish-x --send  # 两步开关：真发已过审的 X 内容
+python scripts/run_daily.py --collect           # 显式跑 X 指标采集
+```
+
+- **`agents/daily.py` 的 `DailyPipeline.run()`**：跑一轮 `FeedbackLoop`，交回 `{ok, date, loop, todo, notes, log_path, record}`；每轮追加一条 `data/daily_runs.jsonl`（时间 / 八阶段状态 / 待办数 / 耗时），第二天接着看。
+- **三件对外的事各有独立开关**：联网研究 `research`、X 发布 `publish_x`（必须再加 `send` 才 `dry_run=False` 真发，否则只留一条「演练位」提示）、指标采集 `collect`；默认全关，关掉时在 `notes` 写清为什么没跑。
+- **发布阶段看存量**（`FeedbackLoop._publish` 扩展）：先处理「已过审待发布」的内容——注入了 `x_workflow`/`worker` 才发，没注入就如实 `skipped` 并把待发布条数写进 todo；今天新内容仍被 Phase 12 人审拦住时是 `gated`。
+- **verdict 闸门保留**：策略结论「需人工判断 / 不建议」不自动起草，skip 消息列出每题结论；`--topic` 是人工拍板指定选题，绕开 verdict 但**绕不开人审**（仍停在 REVIEW）。
+- **运行结束打印「今天必须人做的事」**：人审命令、待复核观察、PROPOSED 策略候选、发布队列、失败阶段。
+
 ## 如何运行 demo
 
 ```bash

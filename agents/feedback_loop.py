@@ -36,6 +36,14 @@ FAILED = "failed"
 UNAPPROVED = ("IDEA", "RESEARCHED", "DRAFT", "REVIEW")
 
 
+def _safe(fn, default):
+    """单个 store/后端出问题不该让整段阶段异常中断。"""
+    try:
+        return fn()
+    except Exception:
+        return default
+
+
 @dataclass
 class StageResult:
     """一个阶段的执行结果：状态 + 一句话结论 + 结构化数据。"""
@@ -197,8 +205,16 @@ class FeedbackLoop:
         if selected is None:
             picked = next((item for item in briefs if item.get("verdict") == "推荐"), None)
             if picked is None:
-                return StageResult("content", SKIPPED,
-                                   "没有 verdict=推荐 的选题：起草前需要人工指定 recommendation。")
+                # 人可以指定「今天就做这题」：本质是人工拍板，绕开 verdict 闸门但要留痕
+                topic = str(context.get("topic") or "")
+                picked = next((item for item in briefs
+                               if topic and item.get("topic") == topic), None)
+                if picked is None:
+                    verdicts = "、".join(f"{item.get('topic')}→{item.get('verdict')}"
+                                         for item in briefs) or "没有可判断的选题"
+                    return StageResult("content", SKIPPED,
+                                       f"没有 verdict=推荐 的选题（{verdicts}）："
+                                       "起草前需要人工指定 recommendation 或 topic。")
             selected = picked.get("recommendation")
             brief = picked
         else:
@@ -218,23 +234,83 @@ class FeedbackLoop:
         )
 
     def _publish(self, context: dict[str, Any], content: StageResult) -> StageResult:
+        """发布阶段：先处理「已过审」的存量内容，再看今天新内容是否被人审拦住。
+
+        注入 `x_workflow` 即代表「允许真实发送」（传 dry_run=False，不走演练，
+        避免演练把内容标成 PUBLISHED）；六平台走注入的 `worker`（CONTRACT_ONLY 只演练）。
+        """
+        contents = _safe(lambda: self.content_agent.store.list(), [])
+        approved = [item for item in contents if item.get("status") == "APPROVED"]
         status = str(content.data.get("status") or "")
-        if not status and not context.get("content_id"):
-            return StageResult("publish", SKIPPED, "本轮没有可发布内容。")
+        x_workflow = context.get("x_workflow")
+        worker = context.get("worker") or self._worker
+
+        if approved:
+            if x_workflow is None and worker is None:
+                return StageResult(
+                    "publish", SKIPPED,
+                    f"{len(approved)} 条内容已过审待发布，但没有注入发布能力"
+                    "（X：context['x_workflow']，由 DailyPipeline --publish-x --send 打开；"
+                    "六平台：context['worker']，且为 CONTRACT_ONLY 演练）。",
+                    {"approved": [item.get("id") for item in approved],
+                     "content_status": status},
+                )
+            return self._dispatch(approved, x_workflow, worker, context)
+
         if status in UNAPPROVED:
             return StageResult("publish", GATED,
                                f"内容停在 {status}：Phase 12 人审未通过，本轮不发布。",
                                {"content_status": status})
-        worker = context.get("worker") or self._worker
-        if worker is None:
+        if not status and not context.get("content_id"):
+            return StageResult("publish", SKIPPED, "本轮没有可发布内容。")
+        if worker is None and x_workflow is None:
             return StageResult("publish", SKIPPED,
-                               "缺发布 worker：Phase 15 的 PublishWorker + 平台适配器需显式注入。")
-        outcome = worker.run_once()
+                               "缺发布能力：context['worker'] / context['x_workflow'] 需显式注入。")
+        outcome = worker.run_once() if worker is not None else None
         if outcome is None:
             return StageResult("publish", SKIPPED, "队列里没有到期 job。")
         return StageResult("publish", RAN,
                            f"发布 job {outcome.get('status')}：{outcome.get('message') or ''}".strip(),
                            {"outcome": outcome})
+
+    @staticmethod
+    def _dispatch(approved: list[dict[str, Any]], x_workflow: Any, worker: Any,
+                  context: dict[str, Any]) -> StageResult:
+        """真发：全部成功→ran；有失败→如实列原因；全失败→failed。"""
+        del context
+        outcomes: list[dict[str, Any]] = []
+        if x_workflow is not None:
+            for item in approved:
+                content_id = str(item.get("id") or "")
+                try:
+                    result = x_workflow.publish(content_id, dry_run=False)
+                except Exception as exc:  # 异常原因必须原样带回去，否则没法排查
+                    result = {"ok": False, "message": f"XWorkflow.publish 异常：{exc}"}
+                outcomes.append({"content_id": content_id, **dict(result)})
+        if worker is not None:
+            job = worker.run_once()
+            if job is not None:
+                outcomes.append({"job": job.get("id"), "status": job.get("status"),
+                                 "ok": bool(job.get("ok")), "message": job.get("message", "")})
+
+        done = [item for item in outcomes if item.get("ok")]
+        failed = [item for item in outcomes if not item.get("ok")]
+        messages = [f"{item.get('content_id') or item.get('job')}："
+                    f"{item.get('message') or item.get('status') or '未知'}" for item in failed]
+        data = {"approved": len(approved),
+                "published": [item.get("content_id") or item.get("job") for item in done],
+                "failed": messages}
+        if done and not failed:
+            return StageResult("publish", RAN, f"发布成功 {len(done)} 条。", data)
+        if done:
+            return StageResult("publish", RAN,
+                               f"发布成功 {len(done)} 条，失败 {len(failed)} 条：" + "；".join(messages),
+                               data)
+        if failed:
+            return StageResult("publish", FAILED,
+                               f"{len(failed)} 条发布全部失败：" + "；".join(messages), data)
+        return StageResult("publish", SKIPPED,
+                           "发布能力已注入，但没有执行任何发布（队列无到期 job）。", data)
 
     def _analytics(self, context: dict[str, Any]) -> StageResult:
         collector = context.get("collector") or self._collector

@@ -193,6 +193,21 @@ def test_loop_without_analytics_reports_insight_skipped(tmp_path):
     assert result["ok"] is True                     # 没数据是 skip，不是失败
 
 
+def test_content_stage_picks_topic_when_no_recommend_verdict(tmp_path):
+    """历史重合会让 verdict 降到「需人工判断」；人用 topic 指定今天做哪题才能往下走。"""
+    memory, _store, loop = build(tmp_path)
+    briefs = [{"topic": "Obsidian 记忆分层实测", "verdict": "需人工判断",
+               "recommendation": _recommendation(memory)}]
+
+    skipped = loop._content("写一条 Thread", {}, [], briefs)
+    assert skipped.status == SKIPPED
+    assert "需人工判断" in skipped.summary            # skip 要说清是哪题卡住、卡在什么结论
+
+    picked = loop._content("写一条 Thread", {"topic": "Obsidian 记忆分层实测"}, [], briefs)
+    assert picked.status == RAN
+    assert picked.data["status"] == "REVIEW"          # 绕开 verdict 闸门不等于绕过人审
+
+
 def test_loop_without_inputs_skips_upstream_stages(tmp_path):
     _memory, _store, loop = build(tmp_path)
 
