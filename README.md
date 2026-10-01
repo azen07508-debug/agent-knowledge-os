@@ -612,6 +612,29 @@ write("/tmp/dash.html", data)
 - **无外部资源**：没有 CDN、没有 `fetch`，页面里唯一的 `<script>` 只做侧栏切页。
 - **诚实空态**：没数据的 section 显示「暂无数据」；来源没有互动数字时热点区明说「不编造热度」。
 
+## Memory Dashboard（Phase 20）
+
+`runtime/memory_dashboard.py`：记忆系统最终该拥有的 **7 个视图**，接在 Phase 19 仪表盘的 **Memory 页**里（同一份 HTML）。
+
+```python
+from runtime.memory_dashboard import collect, VIEWS
+
+sections = collect(memory)        # 7 个 section，与 Phase 19 dashboard 同构（title/columns/rows/note/count）
+```
+
+| 视图 | 回答的问题 | 数据来源 |
+| --- | --- | --- |
+| Account Memory | 账号现在是谁 | `memory.get("account")` |
+| Strategy Memory | 现在采取什么策略 | `memory.get("strategy")`（只读，改策略必须人工） |
+| Learned Patterns | 已经观察到什么 | `17-Insights`：主题 / 观察 / 状态 / 置信度，`pending` 明确标注「未经复核」 |
+| Experiments | 正在验证什么 | `13-Experiments`：编号 / 假设 / 预期结果 / 结论 / 状态 |
+| Decisions | 过去为什么这样决定 | `15-Decisions`：日期 / 事项 / 决策 / 原因 |
+| Agent Knowledge | Agent 学到了什么 | `16-Agent`：Agent / 经验 |
+| Memory Health | 记忆体检 | `memory.health()` 六类问题（重复 / 冲突 / 过时 / 无来源 / 低置信度 / 元数据非法）+ 代表文件 |
+
+- **只读**：不写记忆、不改状态、不替人复核；没有数据的视图 rows 为空，页面显示「暂无数据」，体检计数为空库如实显示 0。
+- **Accounts 页改为「平台账号」**：各平台能力（X 真实读写 / 六平台 CONTRACT_ONLY）+ 发过内容数 + 发布作业数；账号画像与策略不再重复，统一在 Memory 页前两个视图。
+
 ## 如何运行 demo
 
 ```bash

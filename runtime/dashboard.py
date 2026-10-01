@@ -75,7 +75,7 @@ def collect(
         "Publish": _publish_sections(publish, jobs),
         "Analytics": _analytics_sections(analytics, snapshots),
         "Memory": _memory_sections(memory),
-        "Accounts": _account_sections(memory),
+        "Accounts": _account_sections(jobs, contents),
         "Settings": [_settings_section(memory)],
     }
 
@@ -291,34 +291,30 @@ def _insight_notes(memory: MemoryAPI) -> list[dict[str, Any]]:
 
 
 def _memory_sections(memory: MemoryAPI) -> list[dict[str, Any]]:
-    from runtime.creator_memory import CATEGORY_BY_KEY
+    """Phase 20：记忆系统的 7 个视图（Account/Strategy/Patterns/Experiments/
+    Decisions/Agent Knowledge/Memory Health）。"""
+    from runtime import memory_dashboard
 
-    rows = []
-    for key, spec in CATEGORY_BY_KEY.items():
-        notes = _safe(lambda: memory.list_notes(key), [])
-        rows.append([spec.name, key, len(notes)])
-    health = _safe(lambda: memory.health(), {})
-    summary = health.get("summary", {}) if isinstance(health.get("summary"), dict) else {}
-    return [
-        _section("记忆分类", ["分类", "key", "在用笔记"], rows, "不含 99-Archive"),
-        _section("Memory Health", ["问题类型", "数量"],
-                 [[issue, count] for issue, count in summary.items()],
-                 "巡检只读：重复/过时/冲突/无来源/低置信度/元数据非法"),
-    ]
+    return memory_dashboard.collect(memory)
 
 
-def _account_sections(memory: MemoryAPI) -> list[dict[str, Any]]:
-    account = _safe(lambda: memory.get("account"), {"ok": False, "sections": {}})
-    strategy = _safe(lambda: memory.get("strategy"), {"ok": False, "sections": {}})
-    account_rows = [[key, value] for key, value in (account.get("sections") or {}).items()]
-    strategy_rows = [[key, value] for key, value in (strategy.get("sections") or {}).items()]
-    return [
-        _section("账号画像（Account Memory）", ["字段", "值"], account_rows,
-                 "缺画像时选题契合度只能判 UNKNOWN" if not account_rows else ""),
-        _section("当前策略（Strategy Memory）", ["字段", "值"], strategy_rows,
-                 "改策略必须人工 update + recordDecision；Dashboard 只读，不写记忆"
-                 if strategy_rows else ""),
-    ]
+def _account_sections(jobs: list[Any], contents: list[dict]) -> list[dict[str, Any]]:
+    """平台账号：谁在发、发过多少（账号画像与策略在 Memory 页前两个视图）。"""
+    job_counts: dict[str, int] = {}
+    for job in jobs:
+        job_counts[job.platform] = job_counts.get(job.platform, 0) + 1
+    post_counts: dict[str, int] = {}
+    for item in contents:
+        for platform in item.get("platform_versions") or {}:
+            post_counts[platform] = post_counts.get(platform, 0) + 1
+
+    rows = [[platform,
+             "真实读写" if note.startswith("真实") else "CONTRACT_ONLY",
+             post_counts.get(platform, 0), job_counts.get(platform, 0)]
+            for platform, note in PLATFORM_NOTES.items()]
+    return [_section("平台账号", ["平台", "能力", "发过内容", "发布作业"], rows,
+                     "不探测登录态：X 后端状态见 Settings 与 X Layer；"
+                     "账号画像 / 当前策略在 Memory 页的前两个视图。")]
 
 
 def _settings_section(memory: MemoryAPI) -> dict[str, Any]:
