@@ -654,6 +654,26 @@ python scripts/run_daily.py --collect           # 显式跑 X 指标采集
 - **verdict 闸门保留**：策略结论「需人工判断 / 不建议」不自动起草，skip 消息列出每题结论；`--topic` 是人工拍板指定选题，绕开 verdict 但**绕不开人审**（仍停在 REVIEW）。
 - **运行结束打印「今天必须人做的事」**：人审命令、待复核观察、PROPOSED 策略候选、发布队列、失败阶段。
 
+## 最终能力（Phase 22）
+
+`agents/briefing.py` 的 `Briefing`：早报 / 多平台生成 / 发布回执 / 晚报，入口是 `scripts/briefing.py`。
+
+```bash
+python scripts/briefing.py morning --materials m.json   # 今天值得关注 10 个话题 + 3 个最符合定位
+python scripts/briefing.py morning --channel github --research   # 联网调研（默认关闭）
+python scripts/briefing.py generate <content_id>        # 生成 X/小红书/抖音/B站 版本（只生成不外发）
+python scripts/briefing.py publish <content_id>         # 发布回执（默认不开真实发送）
+python scripts/briefing.py publish <content_id> --send  # 显式真实发送 X（内容必须 APPROVED）
+python scripts/briefing.py evening                      # 当日表现 + 记忆待办
+python scripts/briefing.py evening --collect            # 顺带跑 X 指标采集
+```
+
+- **早报 `morning(candidates, limit=10, top=3)`**：TopicEngine 按证据 / 时效 / 账号契合打分取前 10 个话题；「最符合当前账号定位」= `account_fit=HIGH` 按分排序，不足 3 个如实写「不凑数」，没有候选选题就直接说缺什么。
+- **生成 `generate(content_id, platforms)`**：`CanonicalPost.from_content_object` → 各平台 Formatter 渲染出 preview / errors / fingerprint；抖音、B站缺媒体文件会如实报契约错误（`valid=False`），单个平台出错不拖垮整批；**只生成、不改状态、不外发**。
+- **发布 `publish(content_id, platforms, x_workflow=...)`**：非 APPROVED 直接拒绝并写明人审闸门；X 要显式注入 `x_workflow` 才 `dry_run=False` 真发，六平台走 `get_publish_adapter` 的 CONTRACT_ONLY 实现，如实返回「未接入真实发布」。
+- **晚报 `evening(collector=..., write_memory=...)`**：可选采集 → Phase 17 证据闸门分析 → 写入的只是 pending「观察」，并列出 `pending_review`（等 Memory Review 的清单）与 `next_actions`；`write_memory=False` 只出报告。
+- **与 Phase 21 组合成一天**：早报 → `run_daily.py`（生成 / 人审 / 队列 / 采集）→ 晚报；几点跑交给 cron/launchd。
+
 ## 如何运行 demo
 
 ```bash
