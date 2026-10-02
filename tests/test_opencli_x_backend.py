@@ -131,6 +131,39 @@ def test_post_failure_carries_stderr():
     assert result["ok"] is False and "扩展未连接" in result["message"]
 
 
+def test_post_timeout_reconciles_against_timeline():
+    """opencli 超时不等于没发出：最近时间线里有这条就认（真实发帖栽在这过）。"""
+    landed = json.dumps([
+        {"id": "777", "author": "me",
+         "text": "来源：https://t.co/JLmBxqC9Tm（1181 star）",   # X 把链接改写成了 t.co
+         "url": "https://x.com/me/status/777"},
+    ])
+
+    def runner(argv, timeout):
+        if argv[2] == "post":
+            return SimpleNamespace(returncode=75, stdout="", stderr="twitter post timed out after 15s")
+        return SimpleNamespace(returncode=0, stdout=landed, stderr="")
+
+    backend = OpenCliXBackend(runner=runner)
+
+    result = backend.post("来源：https://github.com/a/b（1181 star）")
+
+    assert result == {"ok": True, "id": "777", "url": "https://x.com/me/status/777"}
+
+
+def test_post_failure_without_timeline_match_keeps_original_error():
+    def runner(argv, timeout):
+        if argv[2] == "post":
+            return SimpleNamespace(returncode=75, stdout="", stderr="twitter post timed out after 15s")
+        return SimpleNamespace(returncode=0, stdout="[]", stderr="")
+
+    backend = OpenCliXBackend(runner=runner)
+
+    result = backend.post("没发出的内容")
+
+    assert result["ok"] is False and "退出码 75" in result["message"]
+
+
 def test_schedule_is_honestly_unsupported():
     result = make().schedule("内容", "2026-09-30 09:00")
 

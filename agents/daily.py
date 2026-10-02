@@ -141,7 +141,8 @@ class DailyPipeline:
             )
         if self.publish_x and self.send and "x_workflow" not in context:
             context["x_workflow"] = self._x_workflow if self._x_workflow is not None else XWorkflow(
-                store=self.content_store, memory=self.memory
+                store=self.content_store, memory=self.memory,
+                publish_store=self._publish_store or _build_publish_store(),  # 真发要进 job 表供采集
             )
             notes.append("X 真实发送已开启（publish_x + send）：只发 APPROVED 内容")
         elif self.publish_x and not self.send:
@@ -177,6 +178,12 @@ class DailyPipeline:
         return []
 
 
+def _build_publish_store() -> Any:
+    from runtime.publish_queue import PublishJobStore
+
+    return PublishJobStore()
+
+
 def _build_collector(analytics_store: Any | None, publish_store: Any | None) -> Any:
     """指标采集要 X 后端；只有 collect=True 才会走到这里。"""
     from runtime.analytics_collector import AnalyticsCollector
@@ -187,8 +194,6 @@ def _build_collector(analytics_store: Any | None, publish_store: Any | None) -> 
 
         analytics_store = AnalyticsStore()
     if publish_store is None:
-        from runtime.publish_queue import PublishJobStore
-
-        publish_store = PublishJobStore()
+        publish_store = _build_publish_store()
     return AnalyticsCollector(store=analytics_store, x=default_x_adapter(),
                               publish_store=publish_store)

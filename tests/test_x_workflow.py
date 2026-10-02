@@ -4,6 +4,7 @@ import pytest
 
 from agents import XWorkflow
 from agents.content import ContentAgent
+from agents.x_workflow import record_publish
 from runtime.content_store import ContentStore
 from runtime.human_review import approve
 from runtime.memory_api import MemoryAPI
@@ -57,7 +58,8 @@ class FailBackend:
         return {"ok": False, "message": "X API 拒绝：内容重复"}
 
 
-def make_workflow(tmp_path, which=None, backend=None, dry_run=True) -> XWorkflow:
+def make_workflow(tmp_path, which=None, backend=None, dry_run=True,
+                  publish_store=None, log_path=None) -> XWorkflow:
     memory = MemoryAPI(vault_path=tmp_path)
     memory.create("account", "账号画像", ACCOUNT)
     store = ContentStore(tmp_path / "content.sqlite3")
@@ -73,6 +75,8 @@ def make_workflow(tmp_path, which=None, backend=None, dry_run=True) -> XWorkflow
         memory=memory,
         x=XAdapter(backend=backend if backend is not None else OkBackend(), dry_run=dry_run),
         content_agent=ContentAgent(store=store, memory=memory),
+        publish_store=publish_store,
+        log_path=log_path,
     )
 
 
@@ -245,6 +249,56 @@ def test_publish_real_send_marks_published(tmp_path):
     assert result["ok"] is True and result["dry_run"] is False
     assert wf.store.get(content_id).status == "PUBLISHED"
     assert wf.store.get(content_id).platform_versions == {"X": "Thread"}
+    assert result["recorded"] is None               # 没注入 publish_store 就不记 job
+
+
+def test_publish_records_job_for_metrics_collection(tmp_path):
+    """真发成功要进 Phase 15 的 job 表：Phase 16 的 collect_published 扫的是 job。"""
+    from runtime.publish_queue import PublishJobStore
+
+    publish_store = PublishJobStore(":memory:")
+    log_path = tmp_path / "publish_log.jsonl"
+    wf = make_workflow(tmp_path, backend=OkBackend(), dry_run=False,
+                       publish_store=publish_store, log_path=log_path)
+    content_id = _approved_draft(wf)
+
+    result = wf.publish(content_id, dry_run=False)
+
+    assert result["recorded"]["ok"] is True
+    jobs = publish_store.list_jobs(content_id=content_id, platform="x")
+    assert len(jobs) == 1 and jobs[0].status == "SUCCEEDED"
+    attempts = publish_store.attempts(jobs[0].id)
+    assert [a.published_post_id for a in attempts] == [str(i) for i in result["ids"]]
+    assert all(a.status == "SUCCEEDED" for a in attempts)
+    rows = [line for line in log_path.read_text(encoding="utf-8").splitlines() if line]
+    assert len(rows) == len(result["ids"])          # 每条 post 一行发布日志
+
+    again = record_publish(publish_store, content_id, list(result["ids"]), log_path=log_path)
+    assert again["ok"] is True and again.get("duplicate") is True   # 幂等，不重复记
+
+
+def test_record_publish_reconciled_backfill_feeds_collector(tmp_path):
+    """事后对账补记（RECONCILED_SUCCESS）也必须能被指标采集扫到。"""
+    from runtime.analytics_collector import AnalyticsCollector
+    from runtime.analytics_store import AnalyticsStore
+    from runtime.publish_queue import PublishJobStore
+
+    publish_store = PublishJobStore(":memory:")
+    log_path = tmp_path / "publish_log.jsonl"
+
+    out = record_publish(publish_store, "abc123", ["111", "222"],
+                         reconciled=True, log_path=log_path)
+
+    assert out["ok"] is True
+    job = publish_store.list_jobs(content_id="abc123")[0]
+    assert job.status == "SUCCEEDED"
+    attempts = publish_store.attempts(job.id)
+    assert [a.status for a in attempts] == ["RECONCILED_SUCCESS", "RECONCILED_SUCCESS"]
+    assert [a.published_post_id for a in attempts] == ["111", "222"]
+    assert "对账补记" in log_path.read_text(encoding="utf-8")
+    collector = AnalyticsCollector(store=AnalyticsStore(tmp_path / "a.sqlite3"),
+                                  publish_store=publish_store)
+    assert collector.published_post_ids("abc123", platform="x") == ["111", "222"]
 
 
 def test_publish_failure_keeps_approved_status(tmp_path):

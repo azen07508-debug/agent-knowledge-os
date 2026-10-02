@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from collections.abc import Callable, Mapping
@@ -82,10 +83,12 @@ class OpenCliXBackend:
     def post(self, text: str) -> dict[str, Any]:
         called = self._call(["twitter", "post", text, "-f", "json"])
         if not called["ok"]:
-            return called
+            # opencli 超时/导航被拒 ≠ 没发出：以最近时间线对账，找到就认（今天就栽在这）
+            return self._find_landed(text) or called
         payload = _json(called["stdout"])
         if payload is None:
-            return {"ok": False, "message": "opencli 输出不是 JSON，发布结果无法确认（内容可能已发出，请人工检查）。"}
+            return self._find_landed(text) or {
+                "ok": False, "message": "opencli 输出不是 JSON，发布结果无法确认（内容可能已发出，请人工检查）。"}
         raw = payload[0] if isinstance(payload, list) and payload else payload
         if not isinstance(raw, Mapping):
             return {"ok": False, "message": "发布输出结构无法解析（内容可能已发出，请人工检查）。"}
@@ -93,6 +96,20 @@ class OpenCliXBackend:
         if status and status not in ("ok", "success", "posted"):
             return {"ok": False, "message": str(raw.get("message") or f"发布失败：status={status}")}
         return {"ok": True, "id": str(raw.get("id") or ""), "url": str(raw.get("url") or "")}
+
+    def _find_landed(self, text: str) -> dict[str, Any] | None:
+        """在最近推文里找刚发的这条；找到返回 ok（附 id/url），没有就返回 None。"""
+        rows = self._read(["twitter", "tweets", "--limit", "10", "-f", "json"])
+        if not rows.get("ok"):
+            return None
+        want = _matchable(text)
+        for row in list(rows.get("items") or [])[:5]:  # 只认最近几条，不翻旧账
+            landed = str(row.get("text") or "")
+            if landed and _matchable(landed) == want:
+                url = str(row.get("url") or "")
+                match = re.search(r"/status/(\d+)", url)
+                return {"ok": True, "id": match.group(1) if match else "", "url": url}
+        return None
 
     def schedule(self, text: str, at: str) -> dict[str, Any]:
         return {"ok": False, "message": NO_SCHEDULE}
@@ -174,6 +191,11 @@ def _normalize(raw: Mapping[str, Any]) -> dict[str, str] | None:
         "text": text,
         "time": str(raw.get("created_at") or ""),
     }
+
+
+def _matchable(text: str) -> str:
+    """比对用的归一化：去掉 URL 和空白——X 会把链接改写成 t.co，原文直接对不上。"""
+    return re.sub(r"\s+", "", re.sub(r"https?://\S+", "", str(text)))
 
 
 def _handle(payload: Any) -> str:

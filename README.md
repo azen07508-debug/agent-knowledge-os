@@ -347,7 +347,7 @@ adapter.schedule(text, at)
 
 `ReachResearch` 新增 `channel="x"`（Research X）：走 `XAdapter.search`，推文文本作为材料 title、每条推文只留自己那一行进 `ResearchStore`；未配置后端时 `fetch/harvest` 返回可解释失败。
 
-**当前状态（X 真实跑通）**：`default_x_adapter()` 探测到 `opencli`（1.8.8）→ `OpenCliXBackend`，复用 Chrome 里已登录的 x.com 会话（`AZEN_BTC`）。真实验证过的读路径：`search`（`ReachResearch.fetch/harvest channel="x"`，3 条入库 `data/research.sqlite3`）、`timeline`、`mentions`（whoami → `@自己` 搜索）、`analytics`（`twitter tweets` 找到自己最近推文并给指标）。备选 `TwitterCliXBackend`（twitter-cli + cookie 凭据，`agent-reach configure twitter-cookies`）已实现并在测试覆盖，OpenCLI 不可用时自动降级。代理走 `~/.agent-reach/config.yaml` 的 `proxy`（`127.0.0.1:7890`，twitter-cli 链路用；OpenCLI 走浏览器自己的网络栈）。
+**当前状态（X 真实跑通）**：`default_x_adapter()` 探测到 `opencli`（1.8.8）→ `OpenCliXBackend`，复用 Chrome 里已登录的 x.com 会话（`AZEN_BTC`）。真实验证过的读路径：`search`（`ReachResearch.fetch/harvest channel="x"`，3 条入库 `data/research.sqlite3`）、`timeline`、`mentions`（whoami → `@自己` 搜索）、`analytics`（`twitter tweets` 找到自己最近推文并给指标）。备选 `TwitterCliXBackend`（twitter-cli + cookie 凭据，`agent-reach configure twitter-cookies`）已实现并在测试覆盖，OpenCLI 不可用时自动降级。……代理走 `~/.agent-reach/config.yaml` 的 `proxy`（`127.0.0.1:7890`，twitter-cli 链路用；OpenCLI 走浏览器自己的网络栈）。**`post` 失败先对账**：opencli 超时（rc=75）或 `Navigation rejected` 不等于没发出——`_find_landed()` 会查最近时间线、去掉 URL 归一化后再比对（X 会把链接改写成 `t.co`），命中就认 `ok` 并带上 id/url，没命中才如实报错（2026-10-02 真发 5 条 Thread 时验证：超时的其实已在线，靠这条对账没有重复发）。
 
 ## X 内容工作流（Phase 11）
 
@@ -478,7 +478,7 @@ PublishJob：QUEUED → RUNNING → SUCCEEDED
 
 **已知边界**：六平台 `PublishAdapter` 是 Contract-Only 实现——`validate` 走真实契约校验，`publish/reconcile` 返回 `NOT_IMPLEMENTED`（Job 会诚实落到 FAILED，不重试）；测试与端到端流程用 `MockPublishAdapter`（可编排超时/5xx/「超时但实际已发出」等真实世界剧本）。
 
-**发布日志（PLAN Phase 15「所有发布行为必须记录日志」）**：`PublishWorker.run_once()` 与 `Reconciler.reconcile()` 每次执行都往 `data/publish_log.jsonl` 追加一行（`kind=publish|reconcile`、job/content/platform、attempt_no、status、ok、error_class、post_id）。日志写失败不冒充发布失败——结果照常如实返回。测试里用 `log_path=` 指到临时目录。
+**发布日志（PLAN Phase 15「所有发布行为必须记录日志」）**：`PublishWorker.run_once()` 与 `Reconciler.reconcile()` 每次执行都往 `data/publish_log.jsonl` 追加一行（`kind=publish|reconcile`、job/content/platform、attempt_no、status、ok、error_class、post_id）。日志写失败不冒充发布失败——结果照常如实返回。测试里用 `log_path=` 指到临时目录。**XWorkflow 真发也记**：`publish()` 成功后调 `record_publish()` 落 job（一个 post 一个 attempt，attempt_no 即 thread 序号）+ 日志——Phase 16 `collect_published()` 扫的是 job，不记就永远采不到；事后人工对账补记用 `reconciled=True`（attempt 走 `TIMEOUT_UNVERIFIED → RECONCILED_SUCCESS`）。重复调用按幂等键只记一次。
 
 ## 表现数据（Phase 16）
 

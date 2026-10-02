@@ -13,14 +13,73 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from agents.content import ContentAgent
 from runtime.content_store import ContentStore
 from runtime.memory_api import MemoryAPI
+from runtime.publish_queue import PublishJobStore
+from runtime.publish_worker import append_publish_log
 from runtime.reach_research import ReachResearch
 from runtime.topics import classify, extract
 from runtime.x_adapter import XAdapter, default_x_adapter
+
+
+def record_publish(
+    store: PublishJobStore,
+    content_id: str,
+    post_ids: list[str],
+    *,
+    reconciled: bool = False,
+    log_path: Path | None = None,
+) -> dict[str, Any]:
+    """把真实发出的 Thread 记进 Phase 15 的 job 表 + 发布日志——指标采集扫的是 job。
+
+    一个 post 一个 attempt（schema 一 attempt 一 post_id），attempt_no 即 thread 序号；
+    reconciled=True 是事后按时间线对账补记（超时后人工确认已发出），状态走 RECONCILED_SUCCESS。
+    记录失败只如实返回，不改变「内容已发出」这个事实。
+    """
+    try:
+        ids = [str(pid) for pid in post_ids if str(pid).strip()]
+        if not ids:
+            return {"ok": False, "message": "没有 post_id 可记录。"}
+        job, _created = store.enqueue(content_id, "x", idempotency_key=f"xworkflow:{content_id}")
+        if job.status == "SUCCEEDED":
+            return {"ok": True, "job_id": job.id, "duplicate": True}
+        if job.status != "QUEUED":
+            return {"ok": False, "job_id": job.id,
+                    "message": f"job 已是 {job.status}，不重复记录。"}
+        store.transition(job, "RUNNING")
+        for index, post_id in enumerate(ids, start=1):
+            attempt = store.start_attempt(job.id, request_fingerprint=f"xworkflow:thread:{index}")
+            if reconciled:
+                attempt.transition("TIMEOUT_UNVERIFIED")
+                attempt.transition("RECONCILED_SUCCESS")
+                attempt.reconciliation_status = "MATCHED"
+            else:
+                attempt.finish("SUCCEEDED", provider_request_id=post_id)
+            attempt.published_post_id = post_id
+            store.save_attempt(attempt)
+            append_publish_log(
+                {
+                    "kind": "publish",
+                    "job_id": job.id,
+                    "content_id": content_id,
+                    "platform": "x",
+                    "attempt_no": attempt.attempt_no,
+                    "status": attempt.status,
+                    "ok": True,
+                    "error_class": "",
+                    "post_id": post_id,
+                    "message": "XWorkflow 对账补记" if reconciled else "XWorkflow 真发成功",
+                },
+                log_path,
+            )
+        store.transition(job, "SUCCEEDED")
+        return {"ok": True, "job_id": job.id, "post_ids": ids}
+    except Exception as exc:
+        return {"ok": False, "message": f"发布记录写入失败（内容已发出，不冒充失败）：{exc}"}
 
 
 class XWorkflow:
@@ -33,12 +92,16 @@ class XWorkflow:
         memory: MemoryAPI | None = None,
         x: XAdapter | None = None,
         content_agent: ContentAgent | None = None,
+        publish_store: PublishJobStore | None = None,
+        log_path: Path | None = None,
     ) -> None:
         self._reach = reach
         self._store = store
         self._memory = memory
         self._x = x
         self._content_agent = content_agent
+        self._publish_store = publish_store
+        self._log_path = log_path
 
     @property
     def reach(self) -> ReachResearch:
@@ -153,6 +216,11 @@ class XWorkflow:
         obj.transition("SCHEDULED")
         obj.transition("PUBLISHED")
         self.store.save(obj)
+        recorded = None
+        if self._publish_store is not None:  # 记进 job 表，Phase 16 采集才扫得到
+            recorded = record_publish(self._publish_store, content_id,
+                                      [str(i) for i in result.get("ids", [])],
+                                      log_path=self._log_path)
         return {
             "ok": True,
             "content_id": content_id,
@@ -160,6 +228,7 @@ class XWorkflow:
             "dry_run": bool(result.get("dry_run")),
             "ids": result.get("ids", []),
             "platform_versions": dict(obj.platform_versions),
+            "recorded": recorded,
         }
 
     # ── 失败输出 ────────────────────────────────────────────────────────
