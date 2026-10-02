@@ -208,8 +208,7 @@ def test_publish_requires_approved_status(tmp_path):
         assert wf.store.get(content_id).status != "PUBLISHED"
 
 
-def test_publish_after_human_approval(tmp_path):
-    wf = make_workflow(tmp_path)
+def _approved_draft(wf) -> str:
     draft = wf.topic_to_thread({
         "topic": "选题", "angle": "a", "angles": ["a"], "audience": "开发者",
         "sources": ["https://a.com/1"],
@@ -217,14 +216,33 @@ def test_publish_after_human_approval(tmp_path):
         "facts": ["热层 3 条规则"], "opinions": [],
     })
     content_id = draft["content"]["id"]
-    if wf.store.get(content_id).status == "REVIEW":
-        approve(wf.store, content_id, reviewer="admin", note="来源核对无误")
-    else:
+    if wf.store.get(content_id).status != "REVIEW":
         pytest.skip("草稿因检查未过停在 DRAFT，人审路径在 test_human_review 覆盖")
+    approve(wf.store, content_id, reviewer="admin", note="来源核对无误")
+    return content_id
+
+
+def test_publish_dry_run_keeps_approved_status(tmp_path):
+    """演练没真发：不许把没发生的事写成已发生，状态保持 APPROVED。"""
+    wf = make_workflow(tmp_path)
+    content_id = _approved_draft(wf)
 
     result = wf.publish(content_id)
 
     assert result["ok"] is True and result["dry_run"] is True
+    assert "未真实发送" in result["message"]
+    saved = wf.store.get(content_id)
+    assert saved.status == "APPROVED"                 # 演练不改状态
+    assert saved.platform_versions == {}
+
+
+def test_publish_real_send_marks_published(tmp_path):
+    wf = make_workflow(tmp_path, backend=OkBackend(), dry_run=False)
+    content_id = _approved_draft(wf)
+
+    result = wf.publish(content_id, dry_run=False)
+
+    assert result["ok"] is True and result["dry_run"] is False
     assert wf.store.get(content_id).status == "PUBLISHED"
     assert wf.store.get(content_id).platform_versions == {"X": "Thread"}
 

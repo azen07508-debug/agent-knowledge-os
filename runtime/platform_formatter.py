@@ -90,8 +90,9 @@ class PlatformFormatter:
         lines.append(f"正文：{body}")
         if post.media:
             lines.append(f"媒体：{', '.join(post.media)}")
-        if post.links:
-            lines.append(f"来源：{', '.join(post.links)}")
+        missing = [link for link in post.links if link not in body]  # 正文已有的来源不重复列
+        if missing:
+            lines.append(f"来源：{', '.join(missing)}")
         return "\n".join(lines)
 
     # ── 共享部分（不许子类另写一套规则） ──────────────────────────────────
@@ -191,8 +192,10 @@ class XFormatter(PlatformFormatter):
         head = f"【X Thread · {len(posts)} 条】" if len(posts) > 1 else "【X】"
         parts = [f"{head}（第 {i} 条，权重 {x_weight(chunk)}）\n{chunk}"
                  for i, chunk in enumerate(posts, 1)]
-        if post.links:
-            parts.append(f"来源：{', '.join(post.links)}")
+        joined = "\n".join(posts)
+        missing = [link for link in post.links if link not in joined]  # 正文已有的来源不重复列
+        if missing:
+            parts.append(f"来源：{', '.join(missing)}")
         return "\n".join(parts)
 
 

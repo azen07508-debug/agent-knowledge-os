@@ -112,7 +112,10 @@ class XWorkflow:
     # ── 发布出口（受 Phase 12 人审闸门约束） ─────────────────────────────
 
     def publish(self, content_id: str, dry_run: bool | None = None) -> dict[str, Any]:
-        """发布已 APPROVED 的内容：XAdapter.thread → SCHEDULED → PUBLISHED。"""
+        """发布已 APPROVED 的内容：XAdapter.thread → SCHEDULED → PUBLISHED。
+
+        演练（dry_run=True）没有真实发送，绝不改状态；只有真实发送成功才推进。
+        """
         obj = self.store.get(content_id)
         if obj is None:
             raise FileNotFoundError(f"内容对象不存在：{content_id}")
@@ -127,9 +130,6 @@ class XWorkflow:
         if not posts:
             return {"ok": False, "content_id": content_id, "status": obj.status, "message": "没有可发布的正文。"}
 
-        if not obj.platform_versions:
-            obj.fill({"platform_versions": {"X": "Thread"}})  # 本工作流只发 X
-
         result = self.x.thread(posts, dry_run=dry_run)
         if not result.get("ok"):
             return {
@@ -139,7 +139,17 @@ class XWorkflow:
                 "message": result.get("message", "X 发送失败。"),
                 "posted": result.get("posted", 0),
             }
+        if result.get("dry_run"):  # 演练：没真发，就不能把没发生的事写成已发生
+            return {
+                "ok": True,
+                "content_id": content_id,
+                "status": obj.status,
+                "dry_run": True,
+                "message": "演练完成，未真实发送：内容保持 APPROVED；真实发送要 dry_run=False。",
+            }
 
+        if not obj.platform_versions:
+            obj.fill({"platform_versions": {"X": "Thread"}})  # 本工作流只发 X
         obj.transition("SCHEDULED")
         obj.transition("PUBLISHED")
         self.store.save(obj)
