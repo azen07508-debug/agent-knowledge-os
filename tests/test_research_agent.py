@@ -87,6 +87,47 @@ def test_run_harvests_from_channel_and_stores_material(tmp_path):
     assert not (tmp_path / "11-Research").exists()  # 结论不进记忆
 
 
+def test_query_overrides_task_as_search_term():
+    """检索词不能是任务名：「2026-10-02 每日流程」搜不到任何东西。"""
+    seen: dict[str, str] = {}
+
+    class SpyReach:
+        def harvest(self, query, channel="web", limit=5, topic=""):
+            seen["query"] = query
+            return {"ok": True, "items": []}
+
+    agent = ResearcherAgent(reach=SpyReach())
+
+    agent.run("2026-10-02 每日流程", {"channel": "github", "query": "开源知识库"})
+    assert seen["query"] == "开源知识库"          # 显式 query 优先
+
+    agent.run("2026-10-02 每日流程", {"channel": "github", "topic": "记忆分层"})
+    assert seen["query"] == "记忆分层"            # 其次 topic
+
+    agent.run("obsidian memory", {"channel": "github"})
+    assert seen["query"] == "obsidian memory"     # 都没给才退回任务名
+
+
+def test_query_falls_back_to_segments_when_full_query_empty():
+    """整句 0 结果时按顿号拆开重试，直到搜到东西（gh 对中英混排长句常无结果）。"""
+    tried: list[str] = []
+
+    class SpyReach:
+        def harvest(self, query, channel="web", limit=5, topic=""):
+            tried.append(query)
+            if "、" in query:
+                return {"ok": False, "message": "调研通道返回空结果。"}
+            return {"ok": True, "items": [MEMORY_MATERIAL]}
+
+    agent = ResearcherAgent(reach=SpyReach())
+
+    result = agent.run("每日流程", {"channel": "github", "query": "甲、乙"})
+
+    assert tried == ["甲、乙", "甲"]                 # 整句失败后按顺序试拆分词
+    assert result["material_count"] == 1
+    assert "拆分检索词：甲" in result["summary"]     # 日志里能看到实际用了哪个词
+
+
 def test_run_reports_fetch_failure_without_candidates(tmp_path):
     agent = ResearcherAgent(reach=fake_reach(tmp_path, which_ok=False))
 

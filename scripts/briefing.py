@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from agents.briefing import DEFAULT_PLATFORMS, Briefing
-from agents.researcher import ResearcherAgent
+from agents.researcher import ResearcherAgent, default_research_query
 
 
 def _load_json(path: str):
@@ -41,9 +41,15 @@ def _candidates(args) -> list[dict]:
         if not args.research:
             raise SystemExit("--channel 需要同时给 --research 才允许联网调研（默认不联网）。")
         context["channel"] = args.channel
+        query = args.query or default_research_query()
+        if query:
+            context["query"] = query
+            print(f"调研检索词：{query}")
     if not context:
         return []
     outcome = ResearcherAgent().run("早报候选", context)
+    for error in outcome.get("errors") or []:
+        print(f"调研错误：{error}")
     return list(outcome.get("candidates") or [])
 
 
@@ -141,6 +147,7 @@ def main() -> int:
     morning.add_argument("--materials", metavar="PATH", help="本地材料 JSON（数组，不联网）")
     morning.add_argument("--channel", help="联网调研渠道（必须同时给 --research）")
     morning.add_argument("--research", action="store_true", help="显式允许联网调研")
+    morning.add_argument("--query", help="调研检索词（默认取 Account Memory 的内容领域）")
     morning.add_argument("--limit", type=int, default=10, help="给几个话题（默认 10）")
     morning.add_argument("--top", type=int, default=3, help="挑几个最符合定位（默认 3）")
     morning.set_defaults(func=cmd_morning)

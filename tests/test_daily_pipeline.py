@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from agents import ContentAgent, DailyPipeline, FeedbackLoop
-from agents.feedback_loop import RAN, SKIPPED
+from agents.feedback_loop import FAILED, RAN, SKIPPED
 from runtime.content_store import ContentStore
 from runtime.human_review import approve
 from runtime.memory_api import MemoryAPI
@@ -176,6 +176,29 @@ def test_research_opt_in_passes_channel_to_agent(tmp_path):
 
     assert steps_of(result)["research"]["status"] == RAN
     assert researcher.last_context["channel"] == "github"   # 联网调研只在显式开启时发起
+
+
+def test_research_harvest_failure_marks_stage_failed(tmp_path):
+    """调研失败（如检索词 0 结果）要报 FAILED、整轮 ok=False，不能静悄悄当成跑过。"""
+
+    class FailingResearcher(FakeResearcher):
+        def run(self, task, context=None):
+            self.last_context = dict(context or {})
+            return {"candidates": [], "material_count": 0,
+                    "errors": ["调研通道返回空结果。（检索词：zzz）"]}
+
+    memory = MemoryAPI(vault_path=tmp_path / "vault")
+    memory.create("account", "账号画像", ACCOUNT)
+    memory.create("strategy", "当前内容策略", STRATEGY)
+    loop = FeedbackLoop(memory=memory, researcher=FailingResearcher(),
+                        content_agent=ContentAgent(store=ContentStore(tmp_path / "content.sqlite3"),
+                                                   memory=memory))
+    _memory, _loop, pipeline = build(tmp_path, loop=loop, memory=memory, research=True)
+
+    result = pipeline.run(None, {"channel": "github"})
+
+    assert steps_of(result)["research"]["status"] == FAILED
+    assert result["ok"] is False
 
 
 # ── 对外开关：发布必须两步确认 ──────────────────────────────────────────

@@ -642,7 +642,8 @@ PLAN 的每日流程 `09:00 Research → Topic → Strategy → Content → Huma
 ```bash
 python scripts/run_daily.py                     # 默认全本地：不联网、不外发、不采集
 python scripts/run_daily.py --materials m.json  # 用本地材料调研（不联网）
-python scripts/run_daily.py --research github   # 显式允许联网调研
+python scripts/run_daily.py --research github   # 显式允许联网调研（--query 可换检索词，默认取账号「内容领域」）
+python scripts/run_daily.py --research github --briefing   # 联网调研 + 顺带出早报（复用同一轮候选，不搜两遍）
 python scripts/run_daily.py --topic "选题名"     # 人工指定今天做哪题（无「推荐」结论时）
 python scripts/run_daily.py --publish-x --send  # 两步开关：真发已过审的 X 内容
 python scripts/run_daily.py --collect           # 显式跑 X 指标采集
@@ -653,6 +654,7 @@ python scripts/run_daily.py --collect           # 显式跑 X 指标采集
 - **发布阶段看存量**（`FeedbackLoop._publish` 扩展）：先处理「已过审待发布」的内容——注入了 `x_workflow`/`worker` 才发，没注入就如实 `skipped` 并把待发布条数写进 todo；今天新内容仍被 Phase 12 人审拦住时是 `gated`。
 - **verdict 闸门保留**：策略结论「需人工判断 / 不建议」不自动起草，skip 消息列出每题结论；`--topic` 是人工拍板指定选题，绕开 verdict 但**绕不开人审**（仍停在 REVIEW）。
 - **运行结束打印「今天必须人做的事」**：人审命令、待复核观察、PROPOSED 策略候选、发布队列、失败阶段。
+- **检索词不再拿任务名凑**（`agents/researcher.py`）：搜索词取 `query > topic > 任务名`，`--query` 没给时默认 Account Memory 的「内容领域」；整句 0 结果（gh 对「AI 工具、开源项目、Agent 基础设施」这类长句常搜不到）就按顿号拆开逐个重试，实际用了哪个词写进阶段汇总；调研失败该阶段报 `failed`、整轮 `ok=False`（rc=1），错误逐条打到日志。
 
 ## 最终能力（Phase 22）
 
@@ -660,7 +662,7 @@ python scripts/run_daily.py --collect           # 显式跑 X 指标采集
 
 ```bash
 python scripts/briefing.py morning --materials m.json   # 今天值得关注 10 个话题 + 3 个最符合定位
-python scripts/briefing.py morning --channel github --research   # 联网调研（默认关闭）
+python scripts/briefing.py morning --channel github --research   # 联网调研（默认关闭，--query 可换检索词）
 python scripts/briefing.py generate <content_id>        # 生成 X/小红书/抖音/B站 版本（只生成不外发）
 python scripts/briefing.py publish <content_id>         # 发布回执（默认不开真实发送）
 python scripts/briefing.py publish <content_id> --send  # 显式真实发送 X（内容必须 APPROVED）

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, is_dataclass
 from typing import Any
@@ -36,19 +37,34 @@ class ResearcherAgent(BaseAgent):
             self._reach = ReachResearch()
         return self._reach
 
+    def _harvest(self, query: str, task: str, context: dict[str, Any]) -> dict[str, Any]:
+        return self.reach.harvest(
+            query,
+            channel=context.get("channel", "web"),
+            limit=int(context.get("limit", 5)),
+            topic=context.get("topic", task),
+        )
+
     def run(self, task: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         context = context or {}
         materials = context.get("materials")
+        used_query = ""  # 实际用的检索词（整句 0 结果时会被拆分兜底）
+        note = ""        # 拆分兜底的提示，进 summary 给日志看
 
         if materials is None:
-            harvest = self.reach.harvest(
-                task,
-                channel=context.get("channel", "web"),
-                limit=int(context.get("limit", 5)),
-                topic=context.get("topic", task),
-            )
+            # 检索词：query（人显式给）> topic > 任务名；别拿「2026-10-02 每日流程」去搜
+            query = str(context.get("query") or context.get("topic") or task)
+            harvest = self._harvest(query, task, context)
+            used_query = query
             if not harvest.get("ok"):
-                message = harvest.get("message", "未知原因")
+                for alt in _query_fallbacks(query):
+                    trial = self._harvest(alt, task, context)
+                    if trial.get("ok"):
+                        harvest, used_query = trial, alt
+                        note = f"（拆分检索词：{alt}）"
+                        break
+            if not harvest.get("ok"):
+                message = f"{harvest.get('message', '未知原因')}（检索词：{used_query}）"
                 failure = self.build_result(
                     task=task,
                     summary=f"调研失败：{message}",
@@ -58,6 +74,7 @@ class ResearcherAgent(BaseAgent):
                 )
                 failure["candidates"] = []
                 failure["material_count"] = 0
+                failure["query"] = used_query
                 return failure
             materials = harvest["items"]
 
@@ -66,14 +83,34 @@ class ResearcherAgent(BaseAgent):
 
         result = self.build_result(
             task=task,
-            summary=f"抓取 {len(items)} 条材料，产出 {len(candidates)} 个候选选题",
+            summary=f"抓取 {len(items)} 条材料，产出 {len(candidates)} 个候选选题{note}",
             details=_render_details(candidates),
             knowledge_points=sorted({candidate.category for candidate in candidates}),
             next_actions=["人工复核候选选题及其证据", "复核通过的选题交给 Topic Engine 评分"],
         )
         result["candidates"] = [candidate.to_dict() for candidate in candidates]
         result["material_count"] = len(items)
+        result["query"] = used_query
         return result
+
+
+_QUERY_SPLIT = re.compile(r"[、，,；;]")
+
+
+def _query_fallbacks(query: str) -> list[str]:
+    """整句常 0 结果（gh 对「AI 工具、开源项目、Agent 基础设施」这类长句搜不到），按顿号拆开逐个试。"""
+    parts = [part.strip() for part in _QUERY_SPLIT.split(query) if part.strip()]
+    return list(dict.fromkeys(part for part in parts if part != query))
+
+
+def default_research_query(memory: Any | None = None) -> str:
+    """没显式给检索词时的默认搜索词：Account Memory 的内容领域（研究要围绕账号定位）。"""
+    from runtime.memory_api import MemoryAPI
+
+    api = memory or MemoryAPI()
+    found = api.get("account")
+    sections = found.get("sections") or {}
+    return str(sections.get("内容领域") or sections.get("账号定位") or "").strip()
 
 
 def _as_mappings(materials: Iterable[Any]) -> list[Mapping[str, Any]]:

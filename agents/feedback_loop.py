@@ -165,11 +165,22 @@ class FeedbackLoop:
                                "缺外部输入：调研要联网抓材料，本轮不自动发起（提供 materials 或 channel 才跑）。")
         result = self._researcher_or_default().run(
             task, {key: value for key, value in context.items()
-                   if key in ("materials", "channel", "limit", "topic")}
+                   if key in ("materials", "channel", "limit", "topic", "query")}
         )
         candidates = list(result.get("candidates") or [])
+        errors = list(result.get("errors") or [])
+        if errors:
+            return StageResult("research", FAILED,
+                               f"调研失败：{errors[0]}（{len(errors)} 个错误，本轮 0 候选）。"
+                               if not candidates else
+                               f"调研部分失败：{errors[0]}（仍产出 {len(candidates)} 个候选）。",
+                               {"candidates": candidates, "errors": errors})
+        wanted = str(context.get("query") or context.get("topic") or task)
+        used = str(result.get("query") or "")
+        note = f"，实际检索词「{used}」" if used and used != wanted else ""
         return StageResult("research", RAN,
-                           f"产出 {len(candidates)} 个候选选题（{result.get('material_count', 0)} 条材料）。",
+                           f"产出 {len(candidates)} 个候选选题"
+                           f"（{result.get('material_count', 0)} 条材料{note}）。",
                            {"candidates": candidates, "errors": list(result.get("errors") or [])})
 
     def _strategy(
