@@ -313,7 +313,7 @@ def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[
     """把通道输出拆成 ResearchItem。
 
     `Title:/URL:/Author:/Published:` 分块格式按块拆（Exa 搜索结果）；
-    其余格式（GitHub TSV、Jina 页面）每个来源一条，content 用截断后的材料摘要。
+    其余格式（GitHub TSV、Jina 页面）每个来源一条，content 用可读的材料摘要。
     """
     blocks = _parse_blocks(channel, query, output, topic)
     if blocks:
@@ -327,12 +327,27 @@ def parse_items(channel: str, query: str, output: str, topic: str = "") -> list[
                 source=channel,
                 url=url,
                 title=_item_title(channel, url, line),
-                content=line,
+                content=_material_text(channel, line),
                 query=query,
                 topic=topic,
             )
         )
     return items
+
+
+def _material_text(channel: str, line: str) -> str:
+    """GitHub TSV 行转成可读文本——原始行带制表符，会原样进「事实」，给人看到就是事故。
+
+    `owner/repo\\tdesc\\tpublic\\t2026-10-01T06:58:46Z` → `owner/repo：desc（更新于 2026-10-01）`
+    """
+    if channel != "github" or "\t" not in line:
+        return line
+    parts = [part.strip() for part in line.split("\t")]
+    text = f"{parts[0]}：{parts[1]}" if len(parts) > 1 and parts[1] else parts[0]
+    pushed = parts[-1] if len(parts) > 2 else ""
+    if len(pushed) >= 10 and pushed[:4].isdigit():
+        text += f"（更新于 {pushed[:10]}）"
+    return text
 
 
 def _item_title(channel: str, url: str, line: str) -> str:

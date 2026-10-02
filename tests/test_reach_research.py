@@ -247,6 +247,8 @@ def test_parse_items_falls_back_to_one_item_per_source(tmp_path):
 
     assert [item.url for item in items] == ["https://github.com/owner/repo"]
     assert "A helper" in items[0].content
+    assert "\t" not in items[0].content                   # 原始 TSV 不能直接当材料
+    assert items[0].content == "owner/repo：A helper（更新于 2026-09-28）"
 
 
 def test_parse_items_keeps_each_github_row_on_its_own_item(tmp_path):
@@ -257,9 +259,9 @@ def test_parse_items_keeps_each_github_row_on_its_own_item(tmp_path):
 
     items = {item.url: item for item in parse_items("github", "q", output)}
 
-    assert items["https://github.com/owner/alpha"].content == "owner/alpha\tThe alpha tool\tpublic\t2026-09-28"
+    assert items["https://github.com/owner/alpha"].content == "owner/alpha：The alpha tool（更新于 2026-09-28）"
     assert "beta" not in items["https://github.com/owner/alpha"].content
-    assert items["https://github.com/owner/beta"].content.endswith("2026-09-28")
+    assert items["https://github.com/owner/beta"].content.endswith("2026-09-28）")
 
 
 def test_github_items_get_repo_name_as_title(tmp_path):
