@@ -171,6 +171,8 @@ def _bullets(value: str | Iterable[str] | Mapping[str, str] | int | None) -> str
         return value.strip() or "暂无"
     if isinstance(value, Mapping):
         items = [f"{key}：{item}" for key, item in value.items()]
+    elif isinstance(value, int):  # 数量类字段直接渲染成一行，迭代 int 会炸
+        items = [str(value)]
     else:
         items = [str(item) for item in value]
     items = [item for item in items if str(item).strip()]

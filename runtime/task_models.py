@@ -48,8 +48,9 @@ except Exception:
         def model_dump(self) -> dict[str, Any]:
             return dict(self.__dict__)
 
+    # pydantic 缺席时的同名兜底：mypy 只静态看一份，运行时按 import 结果二选一
     @dataclass
-    class AgentResult(_FallbackModel):
+    class AgentResult(_FallbackModel):  # type: ignore[no-redef]
         agent: str
         task: str
         summary: str
@@ -59,7 +60,7 @@ except Exception:
         next_actions: list[str] = field(default_factory=list)
 
     @dataclass
-    class TaskPlan(_FallbackModel):
+    class TaskPlan(_FallbackModel):  # type: ignore[no-redef]
         goal: str
         phases: list[str] = field(default_factory=list)
         agents: list[str] = field(default_factory=list)
@@ -67,14 +68,14 @@ except Exception:
         risks: list[str] = field(default_factory=list)
 
     @dataclass
-    class KnowledgeNote(_FallbackModel):
+    class KnowledgeNote(_FallbackModel):  # type: ignore[no-redef]
         title: str
         content: str
         tags: list[str] = field(default_factory=list)
         note_type: str = "knowledge"
 
     @dataclass
-    class ErrorNote(_FallbackModel):
+    class ErrorNote(_FallbackModel):  # type: ignore[no-redef]
         title: str
         error_text: str
         solution: str

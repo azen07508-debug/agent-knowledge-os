@@ -77,7 +77,13 @@ class ResearcherAgent(BaseAgent):
 
 
 def _as_mappings(materials: Iterable[Any]) -> list[Mapping[str, Any]]:
-    return [asdict(item) if is_dataclass(item) else dict(item) for item in materials]
+    mappings: list[Mapping[str, Any]] = []
+    for item in materials:
+        if is_dataclass(item) and not isinstance(item, type):
+            mappings.append(asdict(item))
+        else:
+            mappings.append(dict(item))
+    return mappings
 
 
 def _render_details(candidates: list[Any]) -> str:

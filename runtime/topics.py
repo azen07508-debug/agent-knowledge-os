@@ -64,7 +64,7 @@ def classify(text: str) -> str:
         category: sum(lowered.count(word.lower()) for word in words)
         for category, words in CATEGORIES.items()
     }
-    best = max(scores, key=scores.get)
+    best = max(scores, key=lambda name: scores[name])
     return best if scores[best] > 0 else "未分类"
 
 

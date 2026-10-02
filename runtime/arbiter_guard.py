@@ -36,18 +36,19 @@ class ArbiterGuard:
 
     def request_budget(self, agent_name: str, tokens: int) -> dict[str, Any]:
         """申请预算；没有 arbiter-lite 时使用本地轻量预算记录。"""
-        if not self.available:
+        manager = self._manager
+        if manager is None:  # 等价于 not self.available：没有 arbiter-lite 的本地兜底
             allowed = tokens <= self.default_budget
             result = {"allowed": allowed, "message": self._error_message, "tokens": tokens}
             self.write_budget_log(agent_name, tokens, result)
             return result
         try:
-            request = getattr(self._manager, "request_budget", None)
+            request = getattr(manager, "request_budget", None)
             if callable(request):
                 raw_result = request(agent_name, tokens)
                 result = {"allowed": bool(raw_result), "message": "Arbiter 预算申请完成。", "tokens": tokens}
-            elif callable(getattr(self._manager, "request", None)):
-                granted = self._manager.request(agent_name, tokens)
+            elif callable(getattr(manager, "request", None)):
+                granted = manager.request(agent_name, tokens)
                 result = {
                     "allowed": granted >= tokens,
                     "message": f"Arbiter 预算申请完成，批准数量：{granted}。",
@@ -66,9 +67,10 @@ class ArbiterGuard:
         return {"agent": agent_name, "released_tokens": released, "message": "预算已释放。"}
 
     def status(self) -> dict[str, Any]:
-        if self.available and callable(getattr(self._manager, "status", None)):
+        manager = self._manager
+        if manager is not None and callable(getattr(manager, "status", None)):
             try:
-                return {"available": True, "message": "Arbiter 可用。", "usage": self._manager.status()}
+                return {"available": True, "message": "Arbiter 可用。", "usage": manager.status()}
             except Exception as exc:
                 return {"available": False, "message": f"Arbiter 状态读取失败：{exc}", "usage": dict(self.local_usage)}
         return {

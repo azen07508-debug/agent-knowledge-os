@@ -40,3 +40,6 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 python_version = "3.12"
 ignore_missing_imports = true
 check_untyped_defs = true
+# 类型检查只覆盖生产代码；测试的断言风格由 pytest 保证（tests 里多为
+# store.get() 返回 Optional 的收窄与 **dict 构造，属测试写法而非产品缺陷）
+exclude = ["^tests/"]

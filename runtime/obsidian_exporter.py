@@ -133,9 +133,11 @@ def _parse_frontmatter(raw: str, out: dict[str, object]) -> None:
             item = line.strip()
             if item.startswith("- "):
                 item = item[2:]
-            if not isinstance(out[key], list):
-                out[key] = [out[key]] if out[key] else []
-            out[key].append(item)  # type: ignore[union-attr]
+            bucket = out.get(key)
+            if not isinstance(bucket, list):
+                bucket = [bucket] if bucket else []
+                out[key] = bucket
+            bucket.append(item)
             continue
         name, _, value = line.partition(":")
         key = name.strip()

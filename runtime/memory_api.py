@@ -123,6 +123,8 @@ class MemoryAPI:
             return self.layer.save_account(sections, reason=reason, source=source)
 
         note_title = spec.fixed_title or title
+        if not note_title:
+            raise ValueError(f"{spec.name}不是固定单篇，update 必须提供 title。")
         current = self.get(category, note_title)
         if not current["ok"]:
             raise FileNotFoundError(current["message"])
@@ -179,6 +181,8 @@ class MemoryAPI:
 
         spec = self._spec(category)
         note_title = spec.fixed_title or title
+        if not note_title:
+            raise ValueError(f"{spec.name}不是固定单篇，review 必须提供 title。")
         if reason:
             self.update(category, title, sections, status="archived")
         return self.archive(category, note_title)
@@ -209,7 +213,7 @@ class MemoryAPI:
         now = datetime.now()
 
         by_body: dict[tuple[str, str], list[dict[str, Any]]] = {}
-        by_topic: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        by_topic: dict[tuple[str, str], list[tuple[dict[str, Any], str]]] = {}
 
         for entry in entries:
             frontmatter, sections = entry["frontmatter"], entry["sections"]
@@ -232,17 +236,20 @@ class MemoryAPI:
 
             body = render_sections(sections)
             by_body.setdefault((entry["category"], body), []).append(entry)
-            group = _group_key(sections)
-            if group and status in ("active", "pending"):
-                by_topic.setdefault((entry["category"], group), []).append((entry, body))
+            topic_key = _group_key(sections)
+            if topic_key and status in ("active", "pending"):
+                by_topic.setdefault((entry["category"], topic_key), []).append((entry, body))
 
-        for (category, _body), group in by_body.items():
-            if len(group) > 1:
-                issues["duplicate"].append({"category": category, "paths": [e["path"] for e in group]})
-        for (category, group_key), group in by_topic.items():
-            if len(group) > 1 and len({body for _entry, body in group}) > 1:
+        for (category, _body), duplicate_entries in by_body.items():
+            if len(duplicate_entries) > 1:
+                issues["duplicate"].append(
+                    {"category": category, "paths": [e["path"] for e in duplicate_entries]}
+                )
+        for (category, topic_key), topic_entries in by_topic.items():
+            if len(topic_entries) > 1 and len({body for _entry, body in topic_entries}) > 1:
                 issues["conflict"].append(
-                    {"category": category, "topic": group_key, "paths": [entry["path"] for entry, _ in group]}
+                    {"category": category, "topic": topic_key,
+                     "paths": [entry["path"] for entry, _ in topic_entries]}
                 )
 
         return {
