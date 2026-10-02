@@ -231,7 +231,8 @@ def test_evening_without_collector_warns_and_reports_no_data(tmp_path):
     from runtime.analytics_store import AnalyticsStore
 
     memory, _store, briefing = build(tmp_path)
-    briefing = Briefing(memory=memory, store=_store, analytics_store=AnalyticsStore())
+    briefing = Briefing(memory=memory, store=_store,
+                        analytics_store=AnalyticsStore(tmp_path / "analytics.sqlite3"))
 
     result = briefing.evening()
 
