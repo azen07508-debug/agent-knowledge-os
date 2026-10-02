@@ -193,9 +193,17 @@ def _normalize(raw: Mapping[str, Any]) -> dict[str, str] | None:
     }
 
 
+_URL = re.compile(r"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+")
+_DOMAIN = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z]{2,}")
+
+
 def _matchable(text: str) -> str:
-    """比对用的归一化：去掉 URL 和空白——X 会把链接改写成 t.co，原文直接对不上。"""
-    return re.sub(r"\s+", "", re.sub(r"https?://\S+", "", str(text)))
+    """比对用的归一化：剥掉 URL 和裸域名再去空白。
+
+    X 会把链接改写成 t.co，裸域名（如 testnetfaucets.dev）也一样会被改写，
+    两边都剥掉才对得上（2026-10-02 长推对账漏检就出在这）。
+    """
+    return re.sub(r"\s+", "", _DOMAIN.sub("", _URL.sub("", str(text))))
 
 
 def _handle(payload: Any) -> str:

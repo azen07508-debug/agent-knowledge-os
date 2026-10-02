@@ -151,6 +151,26 @@ def test_post_timeout_reconciles_against_timeline():
     assert result == {"ok": True, "id": "777", "url": "https://x.com/me/status/777"}
 
 
+def test_post_timeout_reconciles_bare_domain_rewritten_to_tco():
+    """裸域名（无 http 前缀）也会被 X 改写成 t.co，原文照样要对得上。"""
+    landed = json.dumps([
+        {"id": "888", "author": "me",
+         "text": "- https://t.co/vfkWYq1vvG：36 个水龙头\n完整清单：https://t.co/LhfbbNsHQL",   # 域名都被改写
+         "url": "https://x.com/me/status/888"},
+    ])
+
+    def runner(argv, timeout):
+        if argv[2] == "post":
+            return SimpleNamespace(returncode=75, stdout="", stderr="twitter post timed out after 15s")
+        return SimpleNamespace(returncode=0, stdout=landed, stderr="")
+
+    backend = OpenCliXBackend(runner=runner)
+
+    result = backend.post("- testnetfaucets.dev：36 个水龙头\n完整清单：https://github.com/a/b")
+
+    assert result == {"ok": True, "id": "888", "url": "https://x.com/me/status/888"}
+
+
 def test_post_failure_without_timeline_match_keeps_original_error():
     def runner(argv, timeout):
         if argv[2] == "post":

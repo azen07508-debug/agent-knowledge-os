@@ -347,7 +347,7 @@ adapter.schedule(text, at)
 
 `ReachResearch` 新增 `channel="x"`（Research X）：走 `XAdapter.search`，推文文本作为材料 title、每条推文只留自己那一行进 `ResearchStore`；未配置后端时 `fetch/harvest` 返回可解释失败。
 
-**当前状态（X 真实跑通）**：`default_x_adapter()` 探测到 `opencli`（1.8.8）→ `OpenCliXBackend`，复用 Chrome 里已登录的 x.com 会话（`AZEN_BTC`）。真实验证过的读路径：`search`（`ReachResearch.fetch/harvest channel="x"`，3 条入库 `data/research.sqlite3`）、`timeline`、`mentions`（whoami → `@自己` 搜索）、`analytics`（`twitter tweets` 找到自己最近推文并给指标）。备选 `TwitterCliXBackend`（twitter-cli + cookie 凭据，`agent-reach configure twitter-cookies`）已实现并在测试覆盖，OpenCLI 不可用时自动降级。……代理走 `~/.agent-reach/config.yaml` 的 `proxy`（`127.0.0.1:7890`，twitter-cli 链路用；OpenCLI 走浏览器自己的网络栈）。**`post` 失败先对账**：opencli 超时（rc=75）或 `Navigation rejected` 不等于没发出——`_find_landed()` 会查最近时间线、去掉 URL 归一化后再比对（X 会把链接改写成 `t.co`），命中就认 `ok` 并带上 id/url，没命中才如实报错（2026-10-02 真发 5 条 Thread 时验证：超时的其实已在线，靠这条对账没有重复发）。
+**当前状态（X 真实跑通）**：`default_x_adapter()` 探测到 `opencli`（1.8.8）→ `OpenCliXBackend`，复用 Chrome 里已登录的 x.com 会话（`AZEN_BTC`）。真实验证过的读路径：`search`（`ReachResearch.fetch/harvest channel="x"`，3 条入库 `data/research.sqlite3`）、`timeline`、`mentions`（whoami → `@自己` 搜索）、`analytics`（`twitter tweets` 找到自己最近推文并给指标）。备选 `TwitterCliXBackend`（twitter-cli + cookie 凭据，`agent-reach configure twitter-cookies`）已实现并在测试覆盖，OpenCLI 不可用时自动降级。……代理走 `~/.agent-reach/config.yaml` 的 `proxy`（`127.0.0.1:7890`，twitter-cli 链路用；OpenCLI 走浏览器自己的网络栈）。**`post` 失败先对账**：opencli 超时（rc=75）或 `Navigation rejected` 不等于没发出——`_find_landed()` 会查最近时间线、去掉 URL **和裸域名**归一化后再比对（X 会把链接改写成 `t.co`，裸域名如 `testnetfaucets.dev` 同样会被改写），命中就认 `ok` 并带上 id/url，没命中才如实报错（2026-10-02 真发两轮验证：超时的其实都在线，靠这条对账没有重复发）。**`reply`/`quote` 子命令存在但尚未跑通**：composer 阶段反复失败（quote 报「目标未渲染出 composer」、reply 报「无法验证 composer 文本」），读路径正常——待写操作冷却后重试。
 
 ## X 内容工作流（Phase 11）
 
