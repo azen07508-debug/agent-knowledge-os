@@ -34,3 +34,24 @@ def test_import_skips_items_without_any_public_url():
         result = import_selected_snapshot({"items": [{"title": "无链接"}]}, store)
     assert result["count"] == 0
     assert result["skipped"] == 1
+
+
+def test_reimporting_same_snapshot_is_idempotent_and_tracks_cursor():
+    payload = {"asOf": "2026-10-04T08:00:00Z", "cursor": "cursor-1", "items": [{
+        "title": "重复材料", "summary": "摘要", "source": {"name": "S"},
+        "links": {"original": "https://example.com/same"},
+    }]}
+    with ResearchStore(":memory:") as store:
+        first = import_selected_snapshot(payload, store)
+        second = import_selected_snapshot(payload, store)
+        assert first["created"] == 1
+        assert second["updated"] == 1
+        assert second["count"] == 1
+        assert second["cursor"] == "cursor-1"
+
+
+def test_save_cursor_writes_only_local_sync_state(tmp_path):
+    from runtime.aihot_bridge import save_cursor
+    path = tmp_path / "cursor.json"
+    save_cursor({"cursor": "c2", "asOf": "now", "items": []}, path)
+    assert '"cursor": "c2"' in path.read_text(encoding="utf-8")

@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from runtime.aihot_bridge import fetch_selected_snapshot, import_selected_snapshot
+from runtime.aihot_bridge import fetch_selected_snapshot, import_selected_snapshot, save_cursor
 from runtime.research_store import ResearchStore
 
 
@@ -22,10 +22,13 @@ def main() -> int:
     parser.add_argument("--query", default="AIHOT selected")
     parser.add_argument("--topic", default="aihot-selected")
     parser.add_argument("--db", default=None, help="ResearchStore 路径；不传则使用正式 data/research.sqlite3")
+    parser.add_argument("--cursor-file", default=None)
     args = parser.parse_args()
     payload = fetch_selected_snapshot(args.base)
     with ResearchStore(args.db) as store:
         result = import_selected_snapshot(payload, store, query=args.query, topic=args.topic)
+    if args.cursor_file:
+        save_cursor(payload, args.cursor_file)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

@@ -9,10 +9,12 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
 
 from runtime.research_store import ResearchItem, ResearchStore
+from runtime.source_item import SourceItem
 
 
 def fetch_selected_snapshot(base_url: str, opener: Callable[..., Any] | None = None) -> dict[str, Any]:
@@ -44,16 +46,14 @@ def import_selected_snapshot(
         if not isinstance(raw, Mapping):
             skipped += 1
             continue
-        original = _text(_mapping(raw.get("links")).get("original"))
-        aihot = _text(_mapping(raw.get("links")).get("aihot"))
-        url = original or aihot
-        if not url:
+        try:
+            normalized = SourceItem.from_aihot(raw)
+        except ValueError:
             skipped += 1
             continue
-        title = _text(raw.get("title")) or _text(raw.get("originalTitle"))
-        summary = _text(raw.get("summary"))
-        source = _text(_mapping(raw.get("source")).get("name")) or "AIHOT"
-        published = _text(raw.get("publishedAt"))
+        links = _mapping(raw.get("links"))
+        original = _text(links.get("original"))
+        aihot = _text(links.get("aihot"))
         score = raw.get("score")
         evidence = json.dumps(
             {
@@ -67,11 +67,11 @@ def import_selected_snapshot(
         )
         items.append(
             ResearchItem(
-                source=source,
-                url=url,
-                title=title,
-                timestamp=published,
-                content=summary,
+                source=normalized.source,
+                url=normalized.url,
+                title=normalized.title,
+                timestamp=normalized.published_at,
+                content=normalized.content,
                 topic=topic,
                 evidence=evidence,
                 query=query,
@@ -81,6 +81,11 @@ def import_selected_snapshot(
         )
     result = store.save_many(items)
     return {**result, "skipped": skipped, "as_of": payload.get("asOf"), "cursor": payload.get("cursor")}
+
+
+def save_cursor(payload: Mapping[str, Any], path: str | Path) -> None:
+    """只在成功导入后保存 AIHOT cursor/asOf 到 CreatorOS 本地文件。"""
+    Path(path).write_text(json.dumps({"cursor": payload.get("cursor"), "asOf": payload.get("asOf")}, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
