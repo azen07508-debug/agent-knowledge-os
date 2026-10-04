@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from engines.bazi.models import Chart
 from engines.bazi.strategies import ClassicalApproxDayunPolicy, DayunResult, DayunStrategy
+from engines.bazi.strategy_registry import StrategyRegistry
 from engines.bazi.sxtwl_provider import BRANCHES, STEMS
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "DayunPolicy",
     "DayunResult",
     "DayunStrategy",
+    "StrategyRegistry",
     "YearContext",
     "sexagenary_year",
     "year_context",
