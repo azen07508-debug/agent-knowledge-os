@@ -7,6 +7,7 @@ import pytest
 from engines.bazi import BirthInput, SxtwlBaziProvider
 from engines.bazi.strategies import (
     ClassicalApproxDayunPolicy,
+    DayunPeriod,
     DayunResult,
     StrategyContext,
     StrategyResult,
@@ -55,7 +56,14 @@ def test_dayun_strategy_protocol_result_is_structured():
     assert result.approximate is True
     assert result.direction in ("forward", "backward")
     assert result.periods
-    assert all(isinstance(period, dict) for period in result.periods)
+    assert all(isinstance(period, DayunPeriod) for period in result.periods)
+
+
+def test_dayun_period_cannot_be_mutated_in_place():
+    period = ClassicalApproxDayunPolicy().calculate(chart()).periods[0]
+
+    with pytest.raises(FrozenInstanceError):
+        period.heavenly_stem = "乙"
 
 
 def test_dayun_without_gender_is_rejected():

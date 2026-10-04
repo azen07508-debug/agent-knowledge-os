@@ -32,10 +32,17 @@ class StrategyResult:
 
 
 @dataclass(frozen=True)
+class DayunPeriod:
+    index: int
+    heavenly_stem: str
+    earthly_branch: str
+
+
+@dataclass(frozen=True)
 class DayunResult(StrategyResult):
     direction: str
     start_age: float
-    periods: tuple[dict[str, object], ...]
+    periods: tuple[DayunPeriod, ...]
 
 
 class DayunStrategy(Protocol):
@@ -78,11 +85,11 @@ class ClassicalApproxDayunPolicy:
         )
         step = 1 if forward else -1
         periods = tuple(
-            {
-                "index": index,
-                "heavenly_stem": STEMS[(month_index + step * index) % 10],
-                "earthly_branch": BRANCHES[(month_index + step * index) % 12],
-            }
+            DayunPeriod(
+                index=index,
+                heavenly_stem=STEMS[(month_index + step * index) % 10],
+                earthly_branch=BRANCHES[(month_index + step * index) % 12],
+            )
             for index in range(1, 9)
         )
         return DayunResult(
