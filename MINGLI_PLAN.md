@@ -92,6 +92,8 @@
 
 ### Phase 1：Chart Engine（排盘引擎）
 
+**当前状态（2026-10-04）**：核心 MVP 已实现；大运、流月和第二实现 differential testing 待完成。
+
 **目标**：建立确定性的命盘计算核心，保证计算结果可复现、可审计。
 
 #### 1.1 技术选型
@@ -150,6 +152,8 @@ class BaziEngine:
 ---
 
 ### Phase 2：Knowledge Engine（规则库）
+
+**当前状态（2026-10-04）**：规则模型、注册表、条件匹配和冲突检测 MVP 已实现；经典文献逐条校核待完成。
 
 **目标**：把传统命理典籍转化为结构化规则，支持多流派。
 
@@ -225,6 +229,8 @@ class SchoolConflict:
 ---
 
 ### Phase 3：Evidence Layer（证据层）★核心创新
+
+**当前状态（2026-10-04）**：Chart → Facts → Rule Matches → Evidence 第一版已实现；主题化证据和更细粒度强度模型待完成。
 
 **目标**：这是整个项目最重要的创新层。不让模型直接输出结论，而是先提取事实、匹配规则、形成证据链。
 
@@ -320,6 +326,8 @@ def calculate_evidence_strength(evidence: Evidence) -> float:
 ---
 
 ### Phase 4：Reasoning Agent（推理智能体）
+
+**当前状态（2026-10-04）**：本地 Analyst/Critic 契约已实现；真实 LLM provider、报告生成和多轮修正待完成。
 
 **目标**：基于证据进行命理推理，而不是凭空生成。
 
@@ -460,6 +468,8 @@ Final（通过后输出）
 
 ### Phase 6：Time Engine（时间轴引擎）
 
+**当前状态（2026-10-04）**：流年干支和显式大运未实现边界已实现；大运策略、流月和事件窗口待完成。
+
 **目标**：分析流年流月的事件窗口。
 
 #### 6.1 时间窗口分析
@@ -534,6 +544,8 @@ class TimeWindow:
 ---
 
 ### Phase 7：Evaluation Engine（评估引擎）
+
+**当前状态（2026-10-04）**：统一评估模型和本地自建案例 runner 已实现；MingLi-Bench/fate-bench 适配尚未完成。
 
 **目标**：持续验证系统能力，而不是"上线后就不管"。
 
