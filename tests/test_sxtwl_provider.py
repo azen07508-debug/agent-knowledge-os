@@ -14,6 +14,7 @@ def test_sxtwl_returns_four_pillars_and_provenance():
     assert chart.day_master == chart.pillars[2].heavenly_stem
     assert chart.pillars[0].hidden_stems
     assert [pillar.ten_god for pillar in chart.pillars] == ["食神", "比肩", "日主", "劫财"]
+    assert [pillar.na_yin for pillar in chart.pillars] == ["大林木", "涧下水", "山下火", "天河水"]
 
 
 def test_sxtwl_handles_li_chun_year_boundary():

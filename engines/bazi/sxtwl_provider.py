@@ -37,6 +37,13 @@ ELEMENTS = {
     "庚": "金", "辛": "金", "壬": "水", "癸": "水",
 }
 
+NA_YIN = (
+    "海中金", "炉中火", "大林木", "路旁土", "剑锋金", "山头火", "涧下水", "城头土",
+    "白蜡金", "杨柳木", "泉中水", "屋上土", "霹雳火", "松柏木", "长流水", "砂中金",
+    "山下火", "平地木", "壁上土", "金箔金", "覆灯火", "天河水", "大驿土", "钗钏金",
+    "桑柘木", "大溪水", "沙中土", "天上火", "石榴木", "大海水",
+)
+
 POLARITY = {
     "甲": "阳", "乙": "阴", "丙": "阳", "丁": "阴", "戊": "阳", "己": "阴",
     "庚": "阳", "辛": "阴", "壬": "阳", "癸": "阴",
@@ -67,6 +74,17 @@ def _gz_text(gz: object) -> tuple[str, str]:
     stem_index = int(gz.tg)
     branch_index = int(gz.dz)
     return STEMS[stem_index], BRANCHES[branch_index]
+
+
+def _na_yin(stem: str, branch: str) -> str:
+    """按六十甲子序号返回纳音；甲子起点为海中金。"""
+    stem_index = STEMS.index(stem)
+    branch_index = BRANCHES.index(branch)
+    cycle_index = next(
+        index for index in range(60)
+        if index % 10 == stem_index and index % 12 == branch_index
+    )
+    return NA_YIN[cycle_index // 2]
 
 
 def _equation_of_time_minutes(day_of_year: int) -> float:
@@ -127,6 +145,7 @@ class SxtwlBaziProvider:
                 earthly_branch=branch,
                 hidden_stems=HIDDEN_STEMS[branch],
                 ten_god=_ten_god(day_stem, stem, is_day_pillar=name == "day"),
+                na_yin=_na_yin(stem, branch),
             )
             for name, stem, branch in values
         )
