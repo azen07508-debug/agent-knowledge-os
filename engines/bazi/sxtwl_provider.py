@@ -51,6 +51,15 @@ POLARITY = {
 GENERATES = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "木"}
 CONTROLS = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
 
+BRANCH_RELATIONS = {
+    "六合": {frozenset(pair) for pair in ("子丑", "寅亥", "卯戌", "辰酉", "巳申", "午未")},
+    "六冲": {frozenset(pair) for pair in ("子午", "丑未", "寅申", "卯酉", "辰戌", "巳亥")},
+    "六害": {frozenset(pair) for pair in ("子未", "丑午", "寅巳", "卯辰", "申亥", "酉戌")},
+    "相破": {frozenset(pair) for pair in ("子酉", "寅亥", "卯午", "辰丑", "巳申", "未戌")},
+}
+SELF_PUNISHMENT = {"辰", "午", "酉", "亥"}
+MUTUAL_PUNISHMENT = {frozenset(pair) for pair in ("丑戌未", "寅巳申")}
+
 
 def _ten_god(day_master: str, stem: str, *, is_day_pillar: bool = False) -> str:
     """按日主五行、生克和阴阳计算天干十神。"""
@@ -87,6 +96,33 @@ def _na_yin(stem: str, branch: str) -> str:
     return NA_YIN[cycle_index // 2]
 
 
+def _relations(branches: tuple[str, ...]) -> tuple[dict[str, object], ...]:
+    """返回四支的结构关系事实，不对关系做吉凶判断。"""
+    result: list[dict[str, object]] = []
+    names = ("year", "month", "day", "hour")
+    for left in range(len(branches)):
+        for right in range(left + 1, len(branches)):
+            pair = frozenset((branches[left], branches[right]))
+            for relation, pairs in BRANCH_RELATIONS.items():
+                if pair in pairs:
+                    result.append({
+                        "type": relation,
+                        "branches": [branches[left], branches[right]],
+                        "pillars": [names[left], names[right]],
+                    })
+    for index, branch in enumerate(branches):
+        if branch in SELF_PUNISHMENT and branches.count(branch) >= 2:
+            result.append({"type": "自刑", "branches": [branch], "pillars": [names[index]]})
+    for relation_branches in MUTUAL_PUNISHMENT:
+        if relation_branches.issubset(branches):
+            result.append({
+                "type": "三刑",
+                "branches": sorted(relation_branches),
+                "pillars": [names[index] for index, branch in enumerate(branches) if branch in relation_branches],
+            })
+    return tuple(result)
+
+
 def _equation_of_time_minutes(day_of_year: int) -> float:
     """用 NOAA 常用近似式计算均时差，误差用于校时而非天文科研。"""
     angle = math.radians((360 / 365) * (day_of_year - 81))
@@ -114,7 +150,7 @@ class SxtwlBaziProvider:
     algorithm_version = "sxtwl-2.0.7-bazi-v1"
     supports_true_solar_time = True
     supports_dayun = False
-    supports_relations = False
+    supports_relations = True
 
     def __init__(self, *, use_true_solar_time: bool = False) -> None:
         self.use_true_solar_time = use_true_solar_time
@@ -138,6 +174,7 @@ class SxtwlBaziProvider:
             ("day", day_stem, day_branch),
             ("hour", hour_stem, hour_branch),
         )
+        branch_values = tuple(branch for _, _, branch in values)
         pillars = tuple(
             Pillar(
                 name=name,
@@ -154,6 +191,7 @@ class SxtwlBaziProvider:
             pillars=pillars,
             day_master=day_stem,
             elements={"day_master_element": ELEMENTS[day_stem]},
+            relations=_relations(branch_values),
             provider=self.name,
             algorithm_version=self.algorithm_version,
         )
