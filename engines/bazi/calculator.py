@@ -25,6 +25,14 @@ class BaziProvider(Protocol):
         """根据出生信息计算命盘。"""
 
 
+class ProviderCapabilities(Protocol):
+    """provider 应声明的计算能力，供上层避免误用。"""
+
+    supports_true_solar_time: bool
+    supports_dayun: bool
+    supports_relations: bool
+
+
 class BaziCalculator:
     """对 provider 做统一校验和生命周期封装。"""
 
@@ -48,3 +56,20 @@ class BaziCalculator:
         if chart.algorithm_version != self.provider.algorithm_version:
             raise ValueError("Chart.algorithm_version 必须与 provider 版本一致。")
         return chart
+
+    def capabilities(self) -> dict[str, bool]:
+        """返回 provider 能力；未声明的能力按 False 处理。"""
+        if self.provider is None:
+            return {
+                "supports_true_solar_time": False,
+                "supports_dayun": False,
+                "supports_relations": False,
+            }
+        return {
+            name: bool(getattr(self.provider, name, False))
+            for name in (
+                "supports_true_solar_time",
+                "supports_dayun",
+                "supports_relations",
+            )
+        }
