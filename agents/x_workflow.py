@@ -195,6 +195,17 @@ class XWorkflow:
             posts = [line for line in obj.core_content.splitlines() if line.strip()]
         if not posts:
             return {"ok": False, "content_id": content_id, "status": obj.status, "message": "没有可发布的正文。"}
+        if self._publish_store is not None:
+            pending = [job for job in self._publish_store.list_jobs(content_id=content_id, platform="x")
+                       if job.status in ("TIMEOUT_UNVERIFIED", "RECONCILING", "NEEDS_REVIEW")]
+            if pending:
+                return {
+                    "ok": False,
+                    "content_id": content_id,
+                    "status": obj.status,
+                    "message": f"已有未解决的 X 发布 job（{pending[0].status}），先对账或人工处理，禁止整条重发。",
+                    "blocked_by_job": pending[0].id,
+                }
 
         result = self.x.thread(posts, dry_run=dry_run)
         if not result.get("ok"):

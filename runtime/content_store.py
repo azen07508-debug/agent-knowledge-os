@@ -54,7 +54,7 @@ class ContentStore:
         self.db_path = Path(db_path) if db_path else DEFAULT_DB
         if str(self.db_path) != ":memory:":
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path))
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         self._ensure_columns()
@@ -135,6 +135,8 @@ class ContentStore:
         obj = self.get(object_id)
         if obj is None:
             raise FileNotFoundError(f"内容对象不存在：{object_id}")
+        if obj.status in ("APPROVED", "SCHEDULED", "PUBLISHED"):
+            raise ValueError(f"{obj.status} 内容不可直接修改；先回到 REVIEW/DRAFT 或创建新版本。")
         obj.fill(fields)
         self.save(obj)
         return {"ok": True, "id": object_id, "status": obj.status, "fields": sorted(fields)}

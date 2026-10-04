@@ -217,9 +217,11 @@ def _review_sections(contents: list[dict]) -> list[dict[str, Any]]:
     rows = [[item.get("id"), item.get("topic"), len(item.get("claims") or []),
              len(item.get("evidence") or []), len(item.get("review_notes") or [])]
             for item in pending]
+    section = _section("待人工审核", ["内容 ID", "主题", "断言", "证据", "审核记录"], rows,
+                       "启动 scripts/review_server.py 后，点击内容 ID 进行审核")
+    section["review_ids"] = [item.get("id") for item in pending]
     return [
-        _section("待人工审核", ["内容 ID", "主题", "断言", "证据", "审核记录"], rows,
-                 "命令：runtime.human_review.build_packet / approve / request_changes"),
+        section,
         _section("已通过人审", ["内容 ID", "主题", "状态"],
                  [[item.get("id"), item.get("topic"), item.get("status")]
                   for item in contents
@@ -411,6 +413,13 @@ def _render_section(section: dict[str, Any]) -> str:
             "<tr>" + "".join(f"<td>{_esc(value)}</td>" for value in row) + "</tr>"
             for row in section["rows"]
         )
+        if section.get("review_ids"):
+            body = "".join(
+                "<tr>" + "".join(f"<td>{_esc(value)}</td>" for value in row)
+                + f'<td><button class="review-open" data-content-id="{_esc(row[0])}">打开审核</button></td></tr>'
+                for row in section["rows"]
+            )
+            columns += "<th>操作</th>"
         table = f"<table><thead><tr>{columns}</tr></thead><tbody>{body}</tbody></table>"
     else:
         table = '<p class="empty">暂无数据。</p>'
@@ -467,18 +476,24 @@ th {{ color:var(--muted); font-weight:500; }}
 .note,.empty {{ color:var(--muted); font-size:12px; margin:8px 0 0; }}
 footer {{ color:var(--muted); font-size:12px; padding:16px 24px; border-top:1px solid var(--line); }}
 .page {{ display:none; }}
-.page[data-active] {{ display:block; }}
+ .page[data-active] {{ display:block; }}
+ .review-open,.review-action {{ border:1px solid var(--line); background:#20293a; color:var(--text); border-radius:6px; padding:5px 9px; cursor:pointer; }}
+ .review-action {{ margin:6px 6px 0 0; }}
+ #review-drawer {{ display:none; position:fixed; inset:6vh 6vw; overflow:auto; z-index:10; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; box-shadow:0 20px 80px #0009; }}
+ #review-drawer[data-open] {{ display:block; }}
+ #review-drawer pre {{ white-space:pre-wrap; background:#101217; padding:12px; border-radius:8px; }}
 </style>
 </head>
 <body>
 <div class="layout">
   <nav><div class="brand">CreatorOS</div>{nav}</nav>
-  <main>
+   <main>
     <div class="meta">本地生成于 {generated} · {totals}</div>
     {body}
   </main>
 </div>
-<footer>本地只读视图：不联网、不加载外部资源、不修改任何数据。审批与复核仍走命令行闸门。</footer>
+<div id="review-drawer"><button id="review-close" class="review-action">关闭</button><div id="review-detail">加载中…</div></div>
+<footer>本地数据视图：不联网、不加载外部资源。审核按钮仅调用本机 Review API；发布仍需单独人工确认。</footer>
 <script>
 document.querySelectorAll("button.nav").forEach(function (button) {{
   button.addEventListener("click", function () {{
@@ -489,6 +504,30 @@ document.querySelectorAll("button.nav").forEach(function (button) {{
   }});
 }});
 document.querySelector("section.page").setAttribute("data-active", "");
+const drawer = document.getElementById("review-drawer");
+const detail = document.getElementById("review-detail");
+document.getElementById("review-close").onclick = () => drawer.removeAttribute("data-open");
+document.querySelectorAll(".review-open").forEach(function(button) {{
+  button.onclick = async function() {{
+    drawer.setAttribute("data-open", "");
+    const id = button.dataset.contentId;
+    const response = await window["fetch"]("http://127.0.0.1:8765/api/review/" + encodeURIComponent(id));
+    const packet = await response.json();
+    if (!packet.ok) {{ detail.textContent = packet.message || "加载失败"; return; }}
+    const posts = (packet.generated.posts || []).map((p, i) => `<p><b>${{i + 1}}.</b> ${{escapeHtml(p)}}</p>`).join("");
+    const evidence = (packet.evidence || []).map(e => `<li>${{escapeHtml(e.url)}} — ${{escapeHtml(e.quote)}}</li>`).join("");
+    detail.innerHTML = `<h2>${{escapeHtml(packet.content_id)}} · ${{escapeHtml(packet.status)}}</h2><p>证据状态：${{escapeHtml(packet.evidence_status || "见内容包")}}</p><h3>正文</h3>${{posts}}<h3>证据</h3><ul>${{evidence}}</ul><button class="review-action" data-action="approve">批准</button><button class="review-action" data-action="changes">要求修改</button>`;
+    detail.querySelectorAll(".review-action[data-action]").forEach(action => action.onclick = async () => {{
+      const note = action.dataset.action === "changes" ? prompt("请输入修改要求") : "";
+      if (action.dataset.action === "changes" && !note) return;
+      const endpoint = "http://127.0.0.1:8765/api/review/" + encodeURIComponent(id) + "/" + action.dataset.action;
+      const result = await window["fetch"](endpoint, {{ method:"POST", headers:{{"Content-Type":"application/json"}}, body:JSON.stringify({{reviewer:"local-user",note}}) }}).then(r=>r.json());
+      alert(result.ok ? "已完成：" + result.status : (result.message || "操作失败"));
+      if (result.ok) drawer.removeAttribute("data-open");
+    }});
+  }};
+}});
+function escapeHtml(value) {{ const div=document.createElement("div"); div.textContent=String(value ?? ""); return div.innerHTML; }}
 </script>
 </body>
 </html>

@@ -107,6 +107,21 @@ def test_fill_persists_content_without_changing_status(tmp_path):
     store.close()
 
 
+def test_approved_content_cannot_be_filled(tmp_path):
+    from runtime.human_review import approve
+
+    store = make(tmp_path)
+    obj = ready_object()
+    store.save(obj)
+    store.transition(obj.id, "RESEARCHED")
+    store.transition(obj.id, "DRAFT")
+    store.transition(obj.id, "REVIEW")
+    approve(store, obj.id, "reviewer")
+    with pytest.raises(ValueError, match="APPROVED"):
+        store.fill(obj.id, {"core_content": "被绕过的正文"})
+    store.close()
+
+
 def test_fill_rejects_status_field(tmp_path):
     store = make(tmp_path)
     obj = ready_object()
