@@ -58,7 +58,7 @@ def build_packet(
         "can_approve": obj.status == "REVIEW",
         "research": research,
         "sources": list(obj.sources),
-        "generated": {"hook": obj.hook, "core_content": obj.core_content, "posts": obj.core_content.splitlines()},
+        "generated": {"hook": obj.hook, "core_content": obj.core_content, "posts": obj.platform_posts.get("X") or obj.core_content.splitlines()},
         "claims": list(obj.claims),
         "evidence": list(obj.evidence),
         "ai_suggestions": list(obj.ai_suggestions),

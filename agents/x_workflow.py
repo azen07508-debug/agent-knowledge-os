@@ -32,6 +32,7 @@ def record_publish(
     post_ids: list[str],
     *,
     reconciled: bool = False,
+    partial: bool = False,
     log_path: Path | None = None,
 ) -> dict[str, Any]:
     """把真实发出的 Thread 记进 Phase 15 的 job 表 + 发布日志——指标采集扫的是 job。
@@ -76,7 +77,7 @@ def record_publish(
                 },
                 log_path,
             )
-        store.transition(job, "SUCCEEDED")
+        store.transition(job, "NEEDS_REVIEW" if partial else "SUCCEEDED")
         return {"ok": True, "job_id": job.id, "post_ids": ids}
     except Exception as exc:
         return {"ok": False, "message": f"发布记录写入失败（内容已发出，不冒充失败）：{exc}"}
@@ -189,18 +190,36 @@ class XWorkflow:
                 "status": obj.status,
                 "message": f"未通过人审：当前 {obj.status}，只有 APPROVED 才能发布（Phase 12 强制人审）。",
             }
-        posts = [line for line in obj.core_content.splitlines() if line.strip()]
+        posts = list(obj.platform_posts.get("X") or [])
+        if not posts:
+            posts = [line for line in obj.core_content.splitlines() if line.strip()]
         if not posts:
             return {"ok": False, "content_id": content_id, "status": obj.status, "message": "没有可发布的正文。"}
 
         result = self.x.thread(posts, dry_run=dry_run)
         if not result.get("ok"):
+            posted_ids = [str(item) for item in (result.get("ids") or []) if str(item).strip()]
+            recorded = None
+            if posted_ids and self._publish_store is not None:
+                # A thread can partially land before the provider times out. Record only
+                # confirmed IDs; never mark the content published or retry the whole thread.
+                recorded = record_publish(
+                    self._publish_store,
+                    content_id,
+                    posted_ids,
+                    reconciled=True,
+                    log_path=self._log_path,
+                    partial=True,
+                )
             return {
                 "ok": False,
                 "content_id": content_id,
                 "status": obj.status,
                 "message": result.get("message", "X 发送失败。"),
                 "posted": result.get("posted", 0),
+                "posted_ids": posted_ids,
+                "uncertain": bool(posted_ids) or result.get("error_code") == "TIMEOUT",
+                "recorded": recorded,
             }
         if result.get("dry_run"):  # 演练：没真发，就不能把没发生的事写成已发生
             return {

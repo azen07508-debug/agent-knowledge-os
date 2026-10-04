@@ -114,6 +114,21 @@ def test_post_success_returns_id_and_url():
     assert calls[0]["argv"] == ["opencli", "twitter", "post", "要发的内容", "-f", "json"]
 
 
+def test_post_normalizes_literal_newlines_before_opencli():
+    calls = []
+    backend = make(runner=fake_runner(stdout=json.dumps({"status": "ok", "id": "42"}), calls=calls))
+    backend.post(r"标题\n\n正文")
+    assert calls[0]["argv"][3] == "标题\n\n正文"
+
+
+def test_delete_builds_opencli_command():
+    calls = []
+    backend = make(runner=fake_runner(stdout=json.dumps({"status": "success"}), calls=calls))
+    result = backend.delete("42")
+    assert result == {"ok": True, "id": "42"}
+    assert calls[0]["argv"] == ["opencli", "twitter", "delete", "https://x.com/i/status/42", "-f", "json"]
+
+
 def test_post_error_status_is_failure():
     stdout = json.dumps({"status": "error", "message": "Rate limit exceeded"})
     backend = make(stdout=stdout)

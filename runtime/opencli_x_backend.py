@@ -13,6 +13,8 @@ import subprocess
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from runtime.x_adapter import normalize_post_text
+
 OPENCLI_BIN = "opencli"
 NO_SCHEDULE = "opencli 不支持定时发布；定时排期由 Phase 15 PublishJob 承担。"
 NOT_LOGGED_IN = "浏览器未登录 x.com：先在 Chrome 里登录 X，或运行 opencli twitter login。"
@@ -81,6 +83,7 @@ class OpenCliXBackend:
         return self._read(["twitter", "search", f"@{handle}", "--limit", str(limit), "-f", "json"])
 
     def post(self, text: str) -> dict[str, Any]:
+        text = normalize_post_text(text)
         called = self._call(["twitter", "post", text, "-f", "json"])
         if not called["ok"]:
             # opencli 超时/导航被拒 ≠ 没发出：以最近时间线对账，找到就认（今天就栽在这）
@@ -96,6 +99,21 @@ class OpenCliXBackend:
         if status and status not in ("ok", "success", "posted"):
             return {"ok": False, "message": str(raw.get("message") or f"发布失败：status={status}")}
         return {"ok": True, "id": str(raw.get("id") or ""), "url": str(raw.get("url") or "")}
+
+    def delete(self, post_id: str) -> dict[str, Any]:
+        """OpenCLI 删除；失败由统一 XAdapter fallback 到 twitter-cli。"""
+        if not str(post_id).isdigit():
+            return {"ok": False, "message": "删除需要纯数字 post_id。"}
+        called = self._call(["twitter", "delete", f"https://x.com/i/status/{post_id}", "-f", "json"])
+        if not called["ok"]:
+            return called
+        payload = _json(called["stdout"])
+        if isinstance(payload, list) and payload and isinstance(payload[0], Mapping):
+            if str(payload[0].get("status") or "").lower() in ("success", "ok", "deleted"):
+                return {"ok": True, "id": str(post_id)}
+        if isinstance(payload, Mapping) and str(payload.get("status") or "").lower() in ("success", "ok", "deleted"):
+            return {"ok": True, "id": str(post_id)}
+        return {"ok": False, "message": "OpenCLI 删除结果无法确认。"}
 
     def _find_landed(self, text: str) -> dict[str, Any] | None:
         """在最近推文里找刚发的这条；找到返回 ok（附 id/url），没有就返回 None。"""

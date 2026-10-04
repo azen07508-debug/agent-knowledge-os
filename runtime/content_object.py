@@ -29,6 +29,13 @@ STATUSES: tuple[str, ...] = (
     "ARCHIVED",
 )
 
+EVIDENCE_STATUSES: tuple[str, ...] = (
+    "UNKNOWN",
+    "PUBLIC_SOURCES",
+    "SELF_TESTED",
+    "MIXED",
+)
+
 TRANSITIONS: dict[str, tuple[str, ...]] = {
     "IDEA": ("RESEARCHED", "ARCHIVED"),
     "RESEARCHED": ("DRAFT", "ARCHIVED"),
@@ -66,6 +73,9 @@ class ContentObject:
     """一条内容的完整生命周期记录。"""
 
     topic: str
+    title_candidates: list[str] = field(default_factory=list)
+    evidence_status: str = "UNKNOWN"
+    content_source: str = ""
     angle: str = ""
     audience: str = ""
     sources: list[str] = field(default_factory=list)
@@ -75,6 +85,7 @@ class ContentObject:
     core_content: str = ""
     media: list[str] = field(default_factory=list)
     platform_versions: dict[str, str] = field(default_factory=dict)
+    platform_posts: dict[str, list[str]] = field(default_factory=dict)
     ai_suggestions: list[str] = field(default_factory=list)
     review_notes: list[dict[str, Any]] = field(default_factory=list)
     status: str = "IDEA"
@@ -87,6 +98,8 @@ class ContentObject:
             raise ValueError("ContentObject 必须有 topic。")
         if self.status not in STATUSES:
             raise ValueError(f"非法状态：{self.status}；只能是 {'/'.join(STATUSES)}")
+        if self.evidence_status not in EVIDENCE_STATUSES:
+            raise ValueError(f"非法证据状态：{self.evidence_status}；只能是 {'/'.join(EVIDENCE_STATUSES)}")
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if not self.created_at:
             self.created_at = now
@@ -130,8 +143,8 @@ class ContentObject:
     def fill(self, fields: Mapping[str, Any]) -> None:
         """补齐/更新内容字段（不能改 status：状态只能走 transition）。"""
         updatable = {
-            "topic", "angle", "audience", "sources", "evidence", "claims",
-            "hook", "core_content", "media", "platform_versions",
+            "topic", "title_candidates", "content_source", "angle", "audience", "sources", "evidence", "claims",
+            "hook", "core_content", "media", "platform_versions", "platform_posts",
         }
         unknown = set(fields) - updatable
         if unknown:
@@ -139,6 +152,15 @@ class ContentObject:
         for name, value in fields.items():
             setattr(self, name, value)
         self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def mark_evidence_verified(self, status: str, reviewer: str, note: str = "") -> None:
+        """显式确认实测/混合证据，禁止通过普通 fill 绕过审核。"""
+        if status not in ("SELF_TESTED", "MIXED"):
+            raise ValueError("证据确认状态只能是 SELF_TESTED 或 MIXED")
+        if not reviewer.strip():
+            raise ValueError("证据确认必须提供 reviewer")
+        self.evidence_status = status
+        self.append_review_note("EVIDENCE_VERIFIED", reviewer, note)
 
     def append_review_note(self, action: str, reviewer: str = "", note: str = "") -> None:
         """追加一条审核/修改记录（只增不改，供 Human Review 展示）。"""
@@ -182,6 +204,9 @@ def idea_from_recommendation(
         suggestions += [f"注意：{line}" for line in (brief.get("caveats") or [])]
     return ContentObject(
         topic=str(recommendation.get("topic") or "").strip(),
+        title_candidates=list(recommendation.get("title_candidates") or []),
+        evidence_status=str(recommendation.get("evidence_status") or "UNKNOWN"),
+        content_source=str(recommendation.get("content_source") or ""),
         angle=angles[0] if angles else str(recommendation.get("angle") or ""),
         audience=audience,
         sources=list(recommendation.get("sources") or []),

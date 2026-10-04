@@ -17,12 +17,15 @@ from runtime.content_object import STATUSES, ContentObject
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "content.sqlite3"
 
-JSON_FIELDS = ("sources", "evidence", "claims", "media", "platform_versions", "ai_suggestions", "review_notes")
+JSON_FIELDS = ("title_candidates", "sources", "evidence", "claims", "media", "platform_versions", "platform_posts", "ai_suggestions", "review_notes")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS content_objects (
     id                TEXT PRIMARY KEY,
     topic             TEXT NOT NULL,
+    title_candidates  TEXT NOT NULL DEFAULT '[]',
+    evidence_status   TEXT NOT NULL DEFAULT 'UNKNOWN',
+    content_source    TEXT NOT NULL DEFAULT '',
     angle             TEXT NOT NULL DEFAULT '',
     audience          TEXT NOT NULL DEFAULT '',
     sources           TEXT NOT NULL DEFAULT '[]',
@@ -32,6 +35,7 @@ CREATE TABLE IF NOT EXISTS content_objects (
     core_content      TEXT NOT NULL DEFAULT '',
     media             TEXT NOT NULL DEFAULT '[]',
     platform_versions TEXT NOT NULL DEFAULT '{}',
+    platform_posts    TEXT NOT NULL DEFAULT '{}',
     ai_suggestions    TEXT NOT NULL DEFAULT '[]',
     review_notes      TEXT NOT NULL DEFAULT '[]',
     status            TEXT NOT NULL DEFAULT 'IDEA',
@@ -53,7 +57,21 @@ class ContentStore:
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        self._ensure_columns()
         self._conn.commit()
+
+    def _ensure_columns(self) -> None:
+        """Add fields introduced after the initial SQLite schema without destroying local data."""
+        columns = {row[1] for row in self._conn.execute("PRAGMA table_info(content_objects)")}
+        additions = {
+            "title_candidates": "TEXT NOT NULL DEFAULT '[]'",
+            "evidence_status": "TEXT NOT NULL DEFAULT 'UNKNOWN'",
+            "content_source": "TEXT NOT NULL DEFAULT ''",
+            "platform_posts": "TEXT NOT NULL DEFAULT '{}'",
+        }
+        for name, definition in additions.items():
+            if name not in columns:
+                self._conn.execute(f"ALTER TABLE content_objects ADD COLUMN {name} {definition}")
 
     def save(self, obj: ContentObject) -> dict[str, Any]:
         """新建或覆盖一条内容对象，返回是否新建。"""

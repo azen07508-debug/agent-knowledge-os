@@ -38,7 +38,7 @@ JOB_STATUSES: tuple[str, ...] = (
 
 JOB_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "QUEUED": ("RUNNING", "CANCELLED"),
-    "RUNNING": ("SUCCEEDED", "FAILED", "TIMEOUT_UNVERIFIED", "RETRYING"),
+    "RUNNING": ("SUCCEEDED", "FAILED", "TIMEOUT_UNVERIFIED", "RETRYING", "NEEDS_REVIEW"),
     "RETRYING": ("RUNNING", "CANCELLED", "FAILED"),  # FAILED = 重试次数用尽
     "TIMEOUT_UNVERIFIED": ("RECONCILING",),          # 唯一出路是对账，禁止直连 retry
     "RECONCILING": ("SUCCEEDED", "FAILED", "NEEDS_REVIEW"),

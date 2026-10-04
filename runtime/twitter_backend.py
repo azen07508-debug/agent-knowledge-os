@@ -16,6 +16,8 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from runtime.x_adapter import normalize_post_text
+
 DEFAULT_CONFIG = Path.home() / ".agent-reach" / "config.yaml"
 
 MISSING_CREDS = "X 凭据缺失：先运行 `agent-reach configure twitter-cookies`（隐藏输入 auth_token/ct0）。"
@@ -121,11 +123,27 @@ class TwitterCliXBackend:
         return self._read([self.twitter_bin, "search", "--to", handle, "-n", str(limit), "--json"])
 
     def post(self, text: str) -> dict[str, Any]:
+        text = normalize_post_text(text)
         called = self._call([self.twitter_bin, "post", text, "--json"])
         if not called["ok"]:
             return called
         payload = _json(called["stdout"])
         return {"ok": True, "id": _tweet_id(payload)}
+
+    def delete(self, post_id: str) -> dict[str, Any]:
+        """删除自己的推文；只接受数字 ID，避免误删错误 URL。"""
+        if not str(post_id).isdigit():
+            return {"ok": False, "message": "删除需要纯数字 post_id。"}
+        called = self._call([self.twitter_bin, "delete", str(post_id), "--yes", "--json"])
+        if not called["ok"]:
+            return called
+        payload = _json(called["stdout"])
+        if not isinstance(payload, Mapping):
+            return {"ok": False, "message": "twitter-cli 删除结果无法解析。"}
+        status = str(payload.get("status") or "").lower()
+        if payload.get("ok") is True or status in ("ok", "success", "deleted"):
+            return {"ok": True, "id": str(post_id)}
+        return {"ok": False, "message": str(payload.get("message") or f"twitter-cli 删除失败：status={status or 'unknown'}")}
 
     def schedule(self, text: str, at: str) -> dict[str, Any]:
         return {"ok": False, "message": NO_SCHEDULE}

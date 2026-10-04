@@ -10,11 +10,37 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 X_POST_LIMIT = 280
 X_THREAD_LIMIT = 20
+
+
+def normalize_post_text(text: str) -> str:
+    """把外部脚本常见的字面量转义符转换为真正的排版换行。"""
+    return str(text).replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+
+
+def validate_thread_sequence(posts: Sequence[str]) -> list[str]:
+    """发布前去重并拒绝空帖/字面量转义，避免评论重复根帖内容。"""
+    normalized = [normalize_post_text(str(post)).strip() for post in posts]
+    if any(not post for post in normalized):
+        raise ValueError("Thread 含空帖：有一条内容为空")
+    if len(normalized) > X_THREAD_LIMIT:
+        raise ValueError(f"Thread 过长：{len(normalized)} > {X_THREAD_LIMIT}。")
+    if any("\\n" in post or "\\t" in post for post in normalized):
+        raise ValueError("Thread 含字面量转义符号，必须使用真实换行")
+    seen: set[str] = set()
+    unique: list[str] = []
+    for post in normalized:
+        key = " ".join(post.split())
+        if key in seen:
+            raise ValueError("Thread 含重复段落，不发送重复内容")
+        seen.add(key)
+        unique.append(post)
+    return unique
 
 NOT_CONFIGURED = "X 后端未配置：装好 x-mcp 或 agent-reach 的 X 渠道后注入 backend=XxxBackend()。"
 BACKEND_CONTRACT = (
@@ -52,9 +78,31 @@ class XAdapter:
             return self._not_configured("analytics")
         return _call(self.backend, "analytics", {"post_id": post_id})
 
+    def delete(self, post_id: str) -> dict[str, Any]:
+        """删除自己的推文；OpenCLI 失败时 fallback 到显式凭据的 twitter-cli。"""
+        if not str(post_id).isdigit():
+            return {"ok": False, "action": "delete", "message": "删除需要纯数字 post_id。"}
+        if not self.configured:
+            return self._not_configured("delete")
+        result = _call(self.backend, "delete", {"post_id": str(post_id)})
+        if result.get("ok"):
+            return result
+        try:
+            from runtime.twitter_backend import TwitterCliXBackend
+            fallback = TwitterCliXBackend()
+            if fallback.available and fallback is not self.backend:
+                alternate = fallback.delete(str(post_id))
+                if alternate.get("ok"):
+                    return {**alternate, "fallback": "twitter-cli"}
+                result["fallback_message"] = alternate.get("message", "twitter-cli 删除失败")
+        except Exception as exc:
+            result["fallback_message"] = f"twitter-cli fallback 异常：{exc}"
+        return result
+
     # ── 写（默认演练） ───────────────────────────────────────────────────
 
     def post(self, text: str, dry_run: bool | None = None) -> dict[str, Any]:
+        text = normalize_post_text(text)
         if not (text or "").strip():
             return {"ok": False, "action": "post", "message": "内容为空，不发空帖。"}
         if len(text) > X_POST_LIMIT:
@@ -72,7 +120,10 @@ class XAdapter:
         return _call(self.backend, "post", {"text": text})
 
     def thread(self, posts: Sequence[str], dry_run: bool | None = None) -> dict[str, Any]:
-        posts = [str(post) for post in posts]
+        try:
+            posts = validate_thread_sequence(posts)
+        except ValueError as exc:
+            return {"ok": False, "action": "thread", "message": str(exc)}
         if not posts:
             return {"ok": False, "action": "thread", "message": "Thread 没有内容。"}
         if len(posts) > X_THREAD_LIMIT:
@@ -103,9 +154,22 @@ class XAdapter:
                     "action": "thread",
                     "posted": len(ids),
                     "ids": ids,
+                    "error_code": result.get("error_code", ""),
+                    "provider_request_id": result.get("provider_request_id", ""),
                     "message": f"第 {index}/{len(posts)} 条发送失败：{result.get('message', '未知原因')}",
                 }
-            ids.append(str(result.get("id") or f"#{index}"))
+            post_id = str(result.get("id") or "").strip()
+            if not post_id or re.fullmatch(r"#\d+", post_id):
+                return {
+                    "ok": False,
+                    "action": "thread",
+                    "posted": len(ids),
+                    "ids": ids,
+                    "uncertain": True,
+                    "error_code": "MISSING_POST_ID",
+                    "message": f"第 {index}/{len(posts)} 条返回成功但缺少有效 post_id，结果无法确认。",
+                }
+            ids.append(post_id)
         return {"ok": True, "action": "thread", "dry_run": False, "posts": posts, "ids": ids}
 
     def schedule(self, text: str, at: str, dry_run: bool | None = None) -> dict[str, Any]:

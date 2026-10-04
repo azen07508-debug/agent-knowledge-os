@@ -91,6 +91,30 @@ def test_style_check_passes_clean_thread():
     assert style_check(["钩子", "正文", "来源：https://a.com/1"], banned_words=["收益承诺"])["ok"] is True
 
 
+def test_style_check_flags_crowded_colon_layout():
+    text = "核心方法：" + "这是一段被挤在冒号后面的长说明。" * 20
+    result = style_check([text])
+    assert result["ok"] is False
+    assert any("排版过密" in issue for issue in result["issues"])
+
+
+def test_style_check_handles_empty_first_post_without_index_error():
+    result = style_check(["", "正文"])
+    assert result["ok"] is False
+    assert any("Hook" in issue or "标题" in issue for issue in result["issues"])
+
+
+def test_draft_thread_uses_title_candidate_as_human_hook():
+    posts = draft_thread({
+        "topic": "工具",
+        "title_candidates": ["别再收藏工具了，先解决一个真实麻烦"],
+        "angle": "从资料整理开始",
+        "audience": "开发者",
+    }, [])
+    assert posts[0].startswith("别再收藏工具了")
+    assert "资料整理" in posts[0]
+
+
 def test_style_check_flags_overlong_post():
     result = style_check(["钩子", "x" * 281])
 

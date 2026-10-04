@@ -58,6 +58,17 @@ class FailBackend:
         return {"ok": False, "message": "X API 拒绝：内容重复"}
 
 
+class PartialBackend:
+    def __init__(self):
+        self.calls = 0
+
+    def post(self, text: str):
+        self.calls += 1
+        if self.calls == 4:
+            return {"ok": False, "error_code": "TIMEOUT", "message": "provider timeout"}
+        return {"ok": True, "id": f"partial-{self.calls}"}
+
+
 def make_workflow(tmp_path, which=None, backend=None, dry_run=True,
                   publish_store=None, log_path=None) -> XWorkflow:
     memory = MemoryAPI(vault_path=tmp_path)
@@ -319,6 +330,36 @@ def test_publish_failure_keeps_approved_status(tmp_path):
 
     assert result["ok"] is False and "拒绝" in result["message"]
     assert wf.store.get(content_id).status == "APPROVED"  # 发送失败不改状态
+
+
+def test_partial_thread_failure_records_confirmed_ids_without_publishing(tmp_path):
+    from runtime.publish_queue import PublishJobStore
+
+    publish_store = PublishJobStore(":memory:")
+    log_path = tmp_path / "publish_log.jsonl"
+    wf = make_workflow(tmp_path, backend=PartialBackend(), dry_run=False,
+                       publish_store=publish_store, log_path=log_path)
+    draft = wf.topic_to_thread({
+        "topic": "部分成功", "angle": "超时对账", "angles": ["超时对账"], "audience": "开发者",
+        "sources": ["https://a.com/1"],
+        "evidence": [{"url": "https://a.com/1", "quote": "部分成功"}],
+        "facts": ["部分成功"], "opinions": [],
+    })
+    content_id = draft["content"]["id"]
+    if wf.store.get(content_id).status != "REVIEW":
+        pytest.skip("草稿因检查未过停在 DRAFT")
+    approve(wf.store, content_id, reviewer="admin")
+
+    result = wf.publish(content_id, dry_run=False)
+
+    assert result["ok"] is False
+    assert result["posted_ids"] == ["partial-1", "partial-2", "partial-3"]
+    assert result["uncertain"] is True
+    assert result["recorded"]["ok"] is True
+    assert wf.store.get(content_id).status == "APPROVED"
+    job = publish_store.list_jobs(content_id=content_id, platform="x")[0]
+    assert job.status == "NEEDS_REVIEW"
+    assert [a.published_post_id for a in publish_store.attempts(job.id)] == result["posted_ids"]
 
 
 def test_publish_unknown_content_raises(tmp_path):

@@ -187,6 +187,13 @@ def test_post_failure_carries_stderr(tmp_path):
     assert result["ok"] is False and "Duplicate request" in result["message"]
 
 
+def test_delete_unknown_error_json_is_not_success(tmp_path):
+    backend = make(tmp_path, stdout='{"status":"error","message":"permission denied"}')
+    result = backend.delete("123")
+    assert result["ok"] is False
+    assert "permission denied" in result["message"]
+
+
 def test_schedule_is_honestly_unsupported(tmp_path):
     backend = make(tmp_path)
 

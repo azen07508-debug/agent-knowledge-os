@@ -48,7 +48,10 @@ def draft_thread(
     topic = str(candidate.get("topic") or "")
     angle = str(candidate.get("angle") or "")
     audience = str(candidate.get("audience") or "")
-    hook = angle or topic or "一条实测"
+    title_candidates = [str(item).strip() for item in candidate.get("title_candidates") or [] if str(item).strip()]
+    hook = title_candidates[0] if title_candidates else (angle or topic or "一条实测")
+    if angle and hook != angle and len(hook) + len(angle) + 2 <= X_POST_LIMIT:
+        hook = f"{hook}\n\n{angle}"
 
     if drafter is not None:
         posts = list(drafter(hook=hook, outline=list(outline), audience=audience))
@@ -88,6 +91,13 @@ def style_check(posts: Sequence[str], banned_words: Sequence[str] = ()) -> dict[
     if not posts:
         issues.append("没有内容可发。")
     else:
+        first_post = str(posts[0]).strip()
+        if len(posts) > 1 and not first_post:
+            issues.append("第一条必须有标题或首句 Hook。")
+        if any(r"\n" in post or r"\t" in post for post in posts):
+            issues.append("内容包含字面量转义符号 \\n 或 \\t，必须改为真实换行或自然段。")
+        if any(_crowded_colon(post) for post in posts):
+            issues.append("排版过密：冒号后紧接长段落，需拆成引导句与下一段。")
         if not str(posts[0]).strip():
             issues.append("首条 Hook 为空。")
         if len(posts) > 20:
@@ -99,6 +109,18 @@ def style_check(posts: Sequence[str], banned_words: Sequence[str] = ()) -> dict[
             if word and word in post:
                 issues.append(f"第 {index} 条命中账号禁用词「{word}」。")
     return {"ok": not issues, "issues": issues}
+
+
+def _crowded_colon(post: str) -> bool:
+    """长文中冒号后的长文本应另起段，避免工具清单挤成文字墙。"""
+    text = str(post)
+    for index, char in enumerate(text):
+        if char != "：" or index + 1 >= len(text) or text[index + 1] == "\n":
+            continue
+        tail = text[index + 1 :].split("\n", 1)[0]
+        if len(tail.strip()) > 80:
+            return True
+    return False
 
 
 def ai_flavor_check(text: str) -> dict[str, Any]:

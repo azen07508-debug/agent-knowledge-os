@@ -1,6 +1,6 @@
 """Phase 10：XAdapter（全部 X API 逻辑的唯一入口）。"""
 
-from runtime.x_adapter import XAdapter
+from runtime.x_adapter import XAdapter, normalize_post_text, validate_thread_sequence
 
 TWEET = "冷暖热三层结构，热层 3 条规则 https://example.com/pic"
 
@@ -13,6 +13,10 @@ class StubBackend:
         self.fail_at_post = fail_at_post
         self.boom = boom
         self.posted = 0
+
+    def delete(self, post_id: str):
+        self.calls.append(("delete", post_id))
+        return {"ok": True, "id": post_id}
 
     def search(self, query: str, limit: int):
         self.calls.append(("search", query, limit))
@@ -146,6 +150,38 @@ def test_thread_dry_run_echoes_posts_without_sending():
 
     assert result["ok"] is True and result["dry_run"] is True
     assert result["ids"] == [] and backend.posted == 0
+
+
+def test_normalize_post_text_turns_literal_escapes_into_layout():
+    assert normalize_post_text(r"标题\n\n正文\t下一行") == "标题\n\n正文\t下一行"
+
+
+def test_thread_sequence_rejects_duplicate_posts():
+    try:
+        validate_thread_sequence(["标题", "标题"])
+    except ValueError as exc:
+        assert "重复" in str(exc)
+    else:
+        raise AssertionError("expected duplicate rejection")
+
+
+def test_delete_requires_numeric_id_and_calls_backend():
+    backend = StubBackend()
+    adapter = XAdapter(backend=backend, dry_run=False)
+    assert adapter.delete("not-an-id")["ok"] is False
+    assert adapter.delete("123")["ok"] is True
+    assert ("delete", "123") in backend.calls
+
+
+def test_thread_does_not_persist_placeholder_id_when_backend_omits_id():
+    class MissingIdBackend(StubBackend):
+        def post(self, text: str):
+            return {"ok": True}
+
+    result = XAdapter(backend=MissingIdBackend(), dry_run=False).thread(["标题"])
+    assert result["ok"] is False
+    assert result["ids"] == []
+    assert result["uncertain"] is True
 
 
 def test_thread_sends_in_order_and_collects_ids():

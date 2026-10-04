@@ -8,7 +8,7 @@ from runtime.content_object import (
 )
 
 PLAN_FIELDS = (
-    "topic", "angle", "audience", "sources", "evidence", "claims",
+    "topic", "title_candidates", "evidence_status", "content_source", "angle", "audience", "sources", "evidence", "claims",
     "hook", "core_content", "media", "platform_versions", "status",
 )
 
@@ -17,6 +17,9 @@ def ready_object(**overrides) -> ContentObject:
     """一个各字段齐备、可以一路推进到发布的内容对象。"""
     base = {
         "topic": "Obsidian 记忆分层",
+        "title_candidates": ["标题一", "标题二"],
+        "evidence_status": "SELF_TESTED",
+        "content_source": "项目实测",
         "angle": "冷暖热三层实测",
         "audience": "开发者",
         "sources": ["https://a.com/1"],
@@ -57,6 +60,11 @@ def test_topic_is_required():
 def test_illegal_status_rejected():
     with pytest.raises(ValueError, match="非法状态"):
         ContentObject(topic="选题", status="LIVE")
+
+
+def test_evidence_status_is_explicit():
+    with pytest.raises(ValueError, match="非法证据状态"):
+        ContentObject(topic="选题", evidence_status="GUESS")
 
 
 # ── 状态机 ──────────────────────────────────────────────────────────────
@@ -152,6 +160,16 @@ def test_fill_cannot_change_status():
         obj.fill({"status": "APPROVED"})
 
 
+def test_evidence_status_requires_explicit_verification():
+    obj = ready_object(evidence_status="PUBLIC_SOURCES")
+    with pytest.raises(ValueError, match="不可更新"):
+        obj.fill({"evidence_status": "SELF_TESTED"})
+    with pytest.raises(ValueError, match="reviewer"):
+        obj.mark_evidence_verified("SELF_TESTED", "")
+    obj.mark_evidence_verified("SELF_TESTED", "reviewer", "本地跑通")
+    assert obj.evidence_status == "SELF_TESTED"
+
+
 # ── 从选题推荐落地 IDEA ─────────────────────────────────────────────────
 
 
@@ -174,6 +192,18 @@ def test_idea_from_recommendation_maps_phase6_fields():
     assert obj.sources == ["https://a.com/1"]
     assert obj.evidence == [{"url": "https://a.com/1", "quote": "热层"}]
     assert obj.claims == ["热层 3 条规则"]  # 事实线索 -> 待核查断言，等 REVIEW 核对
+
+
+def test_idea_from_recommendation_keeps_titles_and_evidence_status():
+    obj = idea_from_recommendation({
+        "topic": "Goose",
+        "title_candidates": ["标题 A", "标题 B"],
+        "evidence_status": "PUBLIC_SOURCES",
+        "content_source": "公开资料观察，未实测",
+    })
+    assert obj.title_candidates == ["标题 A", "标题 B"]
+    assert obj.evidence_status == "PUBLIC_SOURCES"
+    assert obj.content_source == "公开资料观察，未实测"
 
 
 def test_idea_falls_back_to_brief_when_audience_unknown():
