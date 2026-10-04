@@ -50,3 +50,9 @@
 - 更新契约测试，验证所有 period 使用 `DayunPeriod`，并验证 period 字段原地赋值抛出 `FrozenInstanceError`。
 - 这是最小兼容范围内的契约收紧：保留 `periods` 的 tuple 序列和字段名，不扩展到 Task 2；调用方若依赖 `period["field"]` 字典索引需迁移到属性访问。
 - TDD：新增测试在实现前因 `DayunPeriod` 不存在而收集失败；实现后通过。
+
+## Scoped re-review 修复（2026-10-04）
+
+- 为 frozen `DayunPeriod` 增加只读 `__getitem__(key: str)`，保留既有调用方对三个字段的下标读取协议。
+- 仅支持 `index`、`heavenly_stem`、`earthly_branch`；未知键抛出 `KeyError`，下标写入仍因 frozen dataclass 不可行。
+- TDD：新增兼容测试在实现前因对象不可下标而失败；实现后专项、全量测试和 ruff 均通过。

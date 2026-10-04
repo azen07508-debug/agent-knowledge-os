@@ -66,6 +66,18 @@ def test_dayun_period_cannot_be_mutated_in_place():
         period.heavenly_stem = "乙"
 
 
+def test_dayun_period_supports_legacy_read_only_mapping_access():
+    period = ClassicalApproxDayunPolicy().calculate(chart()).periods[0]
+
+    assert period["index"] == period.index
+    assert period["heavenly_stem"] == period.heavenly_stem
+    assert period["earthly_branch"] == period.earthly_branch
+    with pytest.raises(KeyError):
+        period["unknown"]
+    with pytest.raises(TypeError):
+        period["index"] = 99
+
+
 def test_dayun_without_gender_is_rejected():
     with pytest.raises(ValueError, match="gender"):
         ClassicalApproxDayunPolicy().calculate(chart(gender=None))

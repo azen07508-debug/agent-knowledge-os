@@ -37,6 +37,11 @@ class DayunPeriod:
     heavenly_stem: str
     earthly_branch: str
 
+    def __getitem__(self, key: str) -> int | str:
+        if key not in ("index", "heavenly_stem", "earthly_branch"):
+            raise KeyError(key)
+        return getattr(self, key)
+
 
 @dataclass(frozen=True)
 class DayunResult(StrategyResult):
