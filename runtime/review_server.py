@@ -16,13 +16,29 @@ class ReviewHandler(BaseHTTPRequestHandler):
     store: ClassVar[ContentStore]
     research: ClassVar[ResearchStore]
 
+    @staticmethod
+    def cors_headers() -> dict[str, str]:
+        return {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+
     def _send(self, code: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        for name, value in self.cors_headers().items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        for name, value in self.cors_headers().items():
+            self.send_header(name, value)
+        self.end_headers()
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
