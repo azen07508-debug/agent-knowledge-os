@@ -60,11 +60,28 @@ def test_analyze_without_selector_returns_explainable_metadata():
     assert response.status_code == 200
     body = response.json()
     assert body["strategy"] is None
+    assert body["analysis"] is None
+    assert body["critique"] is None
+    assert body["conflicts"] is None
+    assert body["report"] is None
     assert body["metadata"]["strategy_selection"] == "required"
     assert "显式选择" in body["metadata"]["message"]
-    assert body["analysis"]["evidence"]["facts"]
-    assert body["analysis"]["evidence"]["rules"] == []
-    assert not body["analysis"]["conclusion"].startswith("基于已匹配")
+    assert body["metadata"]["facts"]
+
+
+def test_service_without_selector_returns_only_chart_and_facts():
+    service = MingLiService()
+    response = service.analyze(
+        {key: value for key, value in payload().items() if key != "question"},
+        payload()["question"],
+    )
+
+    assert response.analysis is None
+    assert response.critique is None
+    assert response.strategy is None
+    assert response.conflicts is None
+    assert response.report is None
+    assert response.metadata["facts"]
 
 
 @pytest.mark.parametrize(

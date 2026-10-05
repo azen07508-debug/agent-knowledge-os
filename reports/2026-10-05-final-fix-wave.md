@@ -30,3 +30,9 @@
 ## Environment Note
 
 直接运行 `pytest` 不可用；项目完整 `uv` 环境因 Intel macOS 无 `lancedb==0.34.0` 可用 wheel 不能解析。使用 `uv --no-project` 安装测试所需最小依赖完成了专项和全量验证，未读取或传输凭据、私有文件或外部项目内容。
+
+## Residual Important Fix
+
+- 无 selector 时在 selector 校验后、Analyst 调用前直接返回，仅返回 chart 与 facts metadata；`analysis`、`critique`、`strategy`、`conflicts`、`report` 均为 `None`，因此不会调用 `ReportGenerator`。
+- `AnalysisResponse.analysis` 与 `critique` 改为允许 `None`；`/api/chart` 仍直接返回 `response.chart`。
+- 测试覆盖 API 与 service 直调，并更新旧的无 selector API 断言。

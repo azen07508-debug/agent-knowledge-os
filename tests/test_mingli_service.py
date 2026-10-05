@@ -14,7 +14,13 @@ def birth_data():
 
 
 def test_service_returns_complete_traceable_response():
-    response = MingLiService().analyze(birth_data(), "事业")
+    response = MingLiService().analyze(
+        {**birth_data(), "gender": "男"},
+        "事业",
+        school="classical",
+        policy="classical_approx_v1",
+        version="1",
+    )
     result = response.to_dict()
 
     assert result["chart"]["provider"] == "sxtwl"

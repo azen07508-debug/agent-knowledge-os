@@ -15,14 +15,14 @@ from engines.bazi import BaziCalculator, BirthInput, SxtwlBaziProvider
 from engines.bazi.strategy_compare import compare_results
 from engines.bazi.strategy_registry import StrategyRegistry
 from knowledge.default_rules import default_registry
-from knowledge.evidence import build_evidence
+from knowledge.evidence import build_evidence, extract_facts
 
 
 @dataclass(frozen=True)
 class AnalysisResponse:
     chart: dict[str, Any]
-    analysis: dict[str, Any]
-    critique: dict[str, Any]
+    analysis: dict[str, Any] | None
+    critique: dict[str, Any] | None
     strategy: dict[str, Any] | None = None
     conflicts: dict[str, Any] | None = None
     report: str | None = None
@@ -54,7 +54,6 @@ class MingLiService:
     ) -> AnalysisResponse:
         birth = BirthInput(**birth_data)
         chart = self.calculator.calculate_chart(birth)
-        analysis = self.analyst.analyze(chart, question)
         selector = (school, policy, version)
         if any(value is None for value in selector) and not all(
             value is None for value in selector
@@ -62,42 +61,41 @@ class MingLiService:
             raise ValueError("school、policy、version 必须同时提供，且不能为空或空白。")
         if any(value is not None and not value.strip() for value in selector):
             raise ValueError("school、policy、version 不能为空或空白。")
+        if not question:
+            raise ValueError("问题不能为空")
+
+        if all(value is None for value in selector):
+            return AnalysisResponse(
+                chart=chart.to_dict(),
+                analysis=None,
+                critique=None,
+                metadata={
+                    "strategy_selection": "required",
+                    "message": "未执行策略；请显式选择 school、policy、version。当前无默认策略。",
+                    "facts": [fact.__dict__ for fact in extract_facts(chart)],
+                },
+            )
+
+        analysis = self.analyst.analyze(chart, question)
 
         strategy = None
         conflict_report = None
+        result = self.strategy_registry.run(
+            chart, school=school, policy=policy, version=version
+        )
+        conflict_report = compare_results((result,))
+        evidence = build_evidence(
+            chart,
+            self.registry,
+            topic=question,
+            strategy_context=result.context,
+        )
+        analysis = replace(analysis, evidence=evidence)
+        strategy = asdict(result)
         metadata = {
-            "strategy_selection": "required",
-            "message": "未执行策略；请显式选择 school、policy、version。当前无默认策略。",
+            "strategy_selection": "explicit",
+            "selector": {"school": school, "policy": policy, "version": version},
         }
-        if all(value is None for value in selector):
-            analysis = replace(
-                analysis,
-                evidence=replace(
-                    analysis.evidence,
-                    matches=(),
-                    conflicts=(),
-                    strength=0.0,
-                    rule_statuses=(),
-                ),
-                conclusion="未执行策略分析；请显式选择 school、policy、version。",
-            )
-        else:
-            result = self.strategy_registry.run(
-                chart, school=school, policy=policy, version=version
-            )
-            conflict_report = compare_results((result,))
-            evidence = build_evidence(
-                chart,
-                self.registry,
-                topic=question,
-                strategy_context=result.context,
-            )
-            analysis = replace(analysis, evidence=evidence)
-            strategy = asdict(result)
-            metadata = {
-                "strategy_selection": "explicit",
-                "selector": {"school": school, "policy": policy, "version": version},
-            }
         critique = self.critic.critique(analysis)
         return AnalysisResponse(
             chart=chart.to_dict(),

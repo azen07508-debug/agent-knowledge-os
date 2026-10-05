@@ -26,12 +26,14 @@ def test_chart_endpoint_returns_structured_chart():
     assert len(response.json()["pillars"]) == 4
 
 
-def test_analyze_endpoint_returns_evidence_and_critique():
+def test_analyze_endpoint_returns_chart_and_facts_without_selector():
     response = client.post("/api/analyze", json={**payload(), "question": "事业"})
 
     assert response.status_code == 200
-    assert "evidence" in response.json()["analysis"]
-    assert "critique" in response.json()
+    body = response.json()
+    assert body["analysis"] is None
+    assert body["critique"] is None
+    assert body["metadata"]["facts"]
 
 
 def test_api_rejects_invalid_birth_input():
