@@ -16,7 +16,7 @@ class ReportGenerator:
         evidence = analysis.evidence
         context = evidence.strategy_context
         lines = [
-            f"## 输入口径\n问题：{analysis.question}",
+            f"## 输入口径\n问题：{self._safe_text(analysis.question)}",
             "## 事实\n" + self._facts(evidence),
             "## 策略\n" + self._strategy(context),
             "## 规则\n" + self._rules(evidence),
@@ -24,13 +24,18 @@ class ReportGenerator:
             "## 冲突\n" + self._conflicts(evidence, conflict_report),
             "## 限制\n" + self._limits(evidence),
         ]
-        return "\n\n".join(lines)
+        return self._safe_text("\n\n".join(lines))
 
     @staticmethod
     def _facts(evidence: Any) -> str:
         if not evidence.facts:
             return "无可用事实。"
-        return "；".join(f"{fact.type}={fact.value}（来源：{fact.source}）" for fact in evidence.facts)
+        return "；".join(
+            f"{ReportGenerator._safe_text(str(fact.type))}="
+            f"{ReportGenerator._safe_text(str(fact.value))}（来源："
+            f"{ReportGenerator._safe_text(str(fact.source))}）"
+            for fact in evidence.facts
+        )
 
     @staticmethod
     def _strategy(context: Any | None) -> str:
@@ -38,8 +43,10 @@ class ReportGenerator:
             return "未指定流派或策略。"
         assumptions = "、".join(context.assumptions) if context.assumptions else "无"
         return (
-            f"流派：{context.school}\n策略：{context.policy}\n版本：{context.version}\n"
-            f"assumptions：{assumptions}"
+            f"流派：{ReportGenerator._safe_text(str(context.school))}\n"
+            f"策略：{ReportGenerator._safe_text(str(context.policy))}\n"
+            f"版本：{ReportGenerator._safe_text(str(context.version))}\n"
+            f"assumptions：{ReportGenerator._safe_text(assumptions)}"
         )
 
     @staticmethod
@@ -47,16 +54,20 @@ class ReportGenerator:
         if not evidence.matches:
             return "未匹配规则。"
         return "\n".join(
-            f"- {match.rule.id}：{ReportGenerator._safe_text(match.rule.conclusion)}（来源：{match.rule.source}）"
+            f"- {ReportGenerator._safe_text(str(match.rule.id))}："
+            f"{ReportGenerator._safe_text(match.rule.conclusion)}（来源："
+            f"{ReportGenerator._safe_text(match.rule.source)}）"
             for match in evidence.matches
         )
 
     @staticmethod
     def _safe_text(text: str) -> str:
+        disclaimer = "证据强度不等同于概率"
+        protected = text.replace(disclaimer, "证据强度不等同于__PROBABILITY_DISCLAIMER__")
         dangerous = ("必然", "一定", "保证", "概率")
-        if any(word in text for word in dangerous):
+        if any(word in protected for word in dangerous):
             return "已拦截危险措辞。"
-        return text
+        return protected.replace("__PROBABILITY_DISCLAIMER__", "概率")
 
     @staticmethod
     def _conclusion(analysis: Analysis) -> str:

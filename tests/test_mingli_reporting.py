@@ -8,6 +8,7 @@ from engines.bazi import BirthInput, SxtwlBaziProvider
 from engines.bazi.strategies import StrategyContext, StrategyResult
 from engines.bazi.strategy_compare import compare_results
 from knowledge.default_rules import default_registry
+from knowledge.evidence import Fact
 from knowledge.rules import RuleRegistry
 
 
@@ -111,6 +112,28 @@ def test_report_blocks_dangerous_rule_conclusion_text():
 
     assert "结果一定发生" not in report
     assert "已拦截危险措辞" in report
+
+
+def test_report_sanitizes_all_user_visible_external_fields():
+    analysis = AnalystAgent(default_registry()).analyze("事业".join(()) or chart(), "问题一定")
+    context = StrategyContext("流派一定", "policy保证", "概率", ("假设必然",))
+    rule = default_registry().list()[0]
+    dangerous_rule = replace(rule, source="来源一定")
+    match = type("Match", (), {"rule": dangerous_rule})()
+    evidence = replace(
+        analysis.evidence,
+        facts=(Fact("fact", "值保证", "来源概率"),),
+        matches=(match,),
+        strategy_context=context,
+    )
+    report = ReportGenerator().render(replace(analysis, evidence=evidence))
+
+    assert "已拦截危险措辞" in report
+    assert "问题一定" not in report
+    assert "值保证" not in report
+    assert "来源概率" not in report
+    assert "流派一定" not in report
+    assert "证据强度不等同于概率" in report
 
 
 def test_low_evidence_report_does_not_make_deterministic_prediction():
