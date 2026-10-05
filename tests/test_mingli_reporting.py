@@ -136,6 +136,28 @@ def test_report_sanitizes_all_user_visible_external_fields():
     assert "证据强度不等同于概率" in report
 
 
+def test_report_sanitizes_conflict_provenance_and_evidence_conflicts():
+    dangerous_context = StrategyContext("学校一定", "策略保证", "概率", ())
+    analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
+    analysis = replace(
+        analysis,
+        evidence=replace(analysis.evidence, conflicts=(("左侧一定", "右侧保证"),)),
+    )
+    conflict_report = compare_results(
+        (StrategyResult(dangerous_context, ("事实",), 0.5, ("冲突概率",), False),)
+    )
+
+    report = ReportGenerator().render(analysis, conflict_report)
+
+    assert "学校一定" not in report
+    assert "策略保证" not in report
+    assert "冲突概率" not in report
+    assert "左侧一定" not in report
+    assert "右侧保证" not in report
+    assert "已拦截危险措辞" in report
+    assert "证据强度不等同于概率" in report
+
+
 def test_low_evidence_report_does_not_make_deterministic_prediction():
     analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
     analysis = replace(

@@ -82,7 +82,9 @@ class ReportGenerator:
             for result in getattr(conflict_report, "results", ()):
                 context = result.context
                 strategies.append(
-                    f"- provenance={context.school}/{context.policy}@{context.version}; "
+                    f"- provenance={ReportGenerator._safe_text(str(context.school))}/"
+                    f"{ReportGenerator._safe_text(str(context.policy))}@"
+                    f"{ReportGenerator._safe_text(str(context.version))}; "
                     f"evidence={ReportGenerator._safe_text(str(result.evidence))}; "
                     f"confidence={result.confidence}; approximate={result.approximate}; "
                     f"conflicts={ReportGenerator._safe_text(str(result.conflicts))}"
@@ -105,7 +107,11 @@ class ReportGenerator:
                 conflict_lines += f"\ndifferences：{ReportGenerator._safe_text(str(differences))}"
             return conflict_lines
         if evidence.conflicts:
-            return "；".join(f"{left} ↔ {right}" for left, right in evidence.conflicts)
+            return "；".join(
+                f"{ReportGenerator._safe_text(str(left))} ↔ "
+                f"{ReportGenerator._safe_text(str(right))}"
+                for left, right in evidence.conflicts
+            )
         return "未发现冲突。"
 
     @staticmethod
