@@ -34,13 +34,13 @@
 | 21 自动化 Agent | 完成 | `test_daily_pipeline` `test_briefing`；launchd `com.creatoros.daily/evening`；新增 `scripts/start.sh` 一键工作台与 Orchestrator 阶段闸门 |
 | 22 最终能力 | 部分 | 早间简报/晚间复盘已跑通（默认离线、人审闸门）；缺国内平台真实发布与非 X 指标数据 |
 
-### 阻塞与下一步
+### 阻塞与下一步（更新于 2026-10-05）
 
-1. **全量测试门禁**：`tests/test_time_engine.py` 1 处失败 + 1 处 Ruff 报错来自未提交的命理 WIP（期望 forward 实为 backward），与本计划无关，待该 WIP 收尾后复验全量。
-2. **X 删除回退**：twitter-cli 凭据未落盘，遗留错误评论需手动删除。
-3. **Phase 13/22 卡点**：六平台真实发布与指标读 API 未接，保持 CONTRACT_ONLY，接入顺序 小红书 → 抖音 → B站 → 公众号 → 微博 → 视频号。
-4. **Orchestrator 执行器接线**：9 个阶段闸门已就位（`scripts/run_orchestrator.py`），各阶段具体执行器逐步接入，默认全关网络/模型/发布。
-5. **AIHOT 侧**：Mimo 429 修复 4 个文件在 aihot 仓待提交；日报 launchd 首跑待观察。
+1. ~~全量测试门禁~~ **已解决**：命理 WIP 收尾提交（2728d62，断言根因=立春前属己巳阴年逆排），全量 535 passed、Ruff 干净。
+2. **Phase 13/22 卡点**：六平台真实发布与指标读 API 未接，保持 CONTRACT_ONLY，接入顺序 小红书 → 抖音 → B站 → 公众号 → 微博 → 视频号。
+3. ~~Orchestrator 执行器接线~~ **已完成**（874f1dd）：9 个阶段全部接真实执行器，能力经 `deps` 注入、未注入如实 skipped，默认全关网络/发布/采集。
+4. ~~AIHOT 侧~~ **已完成**：Mimo 429 修复已提交（aihot 9220472 / 2409565）；日报「首跑失败」根因已诊断并修复（容器抓取直连被墙 → 启用上游 `EGRESS_PROXY_URL` 走本机代理，10/10 T1 信源恢复健康）；剩余为精选阈值校准（gold 标注 → eval 流程），属 AIHOT 项目自身迭代。
+5. X 遗留评论事项按用户 2026-10-05 指示不再跟踪。
 
 ---
 
