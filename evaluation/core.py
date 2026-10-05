@@ -28,6 +28,8 @@ class EvaluationResult:
     conflict: bool = False
     evidence_cited: bool = False
     certainty_violation: bool = False
+    rule_applicable: bool = False
+    calculation_applicable: bool = False
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,8 @@ class EvaluationSummary:
     strategy_conflict_rate: float = 0.0
     evidence_citation_rate: float = 0.0
     certainty_violation_rate: float = 0.0
+    authoritative_count: int = 0
+    rule_applicable_count: int = 0
 
 
 def summarize(
@@ -54,10 +58,16 @@ def summarize(
     total = len(results)
     passed = sum(result.passed for result in results)
     values = tuple(results)
-    def rate(value: int) -> float:
-        return round(value / total, 4) if total else 0.0
+    authoritative_results = tuple(result for result in values if result.source.strip())
+    metric_results = authoritative_results
+    def rate(value: int, denominator: int = len(metric_results)) -> float:
+        return round(value / denominator, 4) if denominator else 0.0
     if authoritative is None:
-        authoritative = all(result.source.strip() for result in values)
+        authoritative = len(authoritative_results) == total
+    rule_results = tuple(result for result in metric_results if result.rule_applicable)
+    calculation_results = tuple(result for result in metric_results if result.calculation_applicable)
+    def rule_rate(value: int) -> float | None:
+        return round(value / len(rule_results), 4) if rule_results else None
     return EvaluationSummary(
         total=total,
         passed=passed,
@@ -65,12 +75,17 @@ def summarize(
         accuracy=round(passed / total, 4) if total else 0.0,
         results=values,
         authoritative=authoritative,
-        calculation_accuracy=rate(sum(result.calculation_passed for result in values)),
-        rule_accuracy=rate(sum(result.rule_passed for result in values)),
+        calculation_accuracy=(
+            round(sum(result.calculation_passed for result in calculation_results) / len(calculation_results), 4)
+            if calculation_results else 0.0
+        ),
+        rule_accuracy=rule_rate(sum(result.rule_passed for result in rule_results)),
         agent_behavior_accuracy=rate(sum(
-            result.evidence_cited and not result.certainty_violation for result in values
+            result.evidence_cited and not result.certainty_violation for result in metric_results
         )),
-        strategy_conflict_rate=rate(sum(result.conflict for result in values)),
-        evidence_citation_rate=rate(sum(result.evidence_cited for result in values)),
-        certainty_violation_rate=rate(sum(result.certainty_violation for result in values)),
+        strategy_conflict_rate=rate(sum(result.conflict for result in metric_results)),
+        evidence_citation_rate=rate(sum(result.evidence_cited for result in metric_results)),
+        certainty_violation_rate=rate(sum(result.certainty_violation for result in metric_results)),
+        authoritative_count=len(authoritative_results),
+        rule_applicable_count=len(rule_results),
     )

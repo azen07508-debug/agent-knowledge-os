@@ -18,3 +18,16 @@
 ## Concerns
 
 - `uv.lock` was already untracked before this task and was not modified or included.
+
+## Reviewer follow-up
+
+- Certainty violations now use `CriticAgent` output and are measured on a real dangerous-word case.
+- Authority-scoped metrics exclude empty-source cases and expose `authoritative_count`; rule accuracy is `None` when no rule assertion applies.
+- Invalid input/expected/source shapes and unknown expected fields are recorded as `mismatch` failures without aborting the batch.
+
+Follow-up verification:
+
+- `tests/test_strategy_evaluation.py`: 6 passed.
+- `tests/test_evaluation.py tests/test_strategy_evaluation.py`: 8 passed.
+- Full suite: 545 passed, 1 existing dependency deprecation warning.
+- Ruff: passed.

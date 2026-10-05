@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agents.mingli import AnalystAgent
+from agents.mingli import AnalystAgent, CriticAgent
 from engines.bazi import BaziCalculator, BirthInput, SxtwlBaziProvider
 from evaluation.core import EvaluationCase, EvaluationResult, EvaluationSummary, summarize
 
@@ -16,6 +16,10 @@ def run_cases(agent: AnalystAgent, cases: list[EvaluationCase]) -> EvaluationSum
     calculator = BaziCalculator(SxtwlBaziProvider())
     for case in cases:
         try:
+            if not isinstance(case.input_data, dict) or not isinstance(case.expected, dict):
+                raise TypeError("mismatch: input_data and expected must be objects")
+            if not isinstance(case.source, str):
+                raise TypeError("mismatch: source must be a string")
             birth = BirthInput(**case.input_data)
             chart = calculator.calculate_chart(birth)
             analysis = agent.analyze(chart, case.expected.get("question", ""))
@@ -34,23 +38,33 @@ def run_cases(agent: AnalystAgent, cases: list[EvaluationCase]) -> EvaluationSum
             expected = {key: value for key, value in case.expected.items() if key != "question"}
             calculation_keys = {"provider", "day_master", "pillars", "relations"}
             calculation_expected = {k: v for k, v in expected.items() if k in calculation_keys}
+            unknown = set(expected) - calculation_keys - {"evidence_rules"}
+            if unknown:
+                raise ValueError(f"mismatch: unknown expected fields: {', '.join(sorted(unknown))}")
             rule_expected = {k: v for k, v in expected.items() if k not in calculation_keys}
             calculation_passed = all(actual.get(k) == v for k, v in calculation_expected.items())
             rule_passed = all(actual.get(k) == v for k, v in rule_expected.items())
             cited = bool(analysis.evidence.matches) and all(
                 match.rule.source.strip() for match in analysis.evidence.matches
             )
+            critique = CriticAgent(agent.registry).critique(analysis)
+            certainty_violation = any(
+                "确定性/危险措辞" in issue for issue in critique.issues
+            )
             result_passed = calculation_passed and rule_passed
             results.append(EvaluationResult(
                 case.case_id, result_passed, expected, actual,
                 source=case.source, calculation_passed=calculation_passed,
                 rule_passed=rule_passed, conflict=bool(analysis.evidence.conflicts),
-                evidence_cited=cited,
+                evidence_cited=cited, certainty_violation=certainty_violation,
+                rule_applicable="evidence_rules" in expected,
+                calculation_applicable=bool(set(expected) & calculation_keys),
             ))
         except (TypeError, ValueError, RuntimeError) as exc:
             results.append(EvaluationResult(
                 case.case_id, False, case.expected, None, str(exc),
-                source=case.source, failure_reason=str(exc),
+                source=case.source if isinstance(case.source, str) else "",
+                failure_reason=f"mismatch: {exc}",
             ))
     return summarize(results)
 

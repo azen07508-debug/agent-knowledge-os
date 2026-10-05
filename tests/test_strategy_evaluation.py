@@ -2,7 +2,7 @@
 
 import json
 
-from agents.mingli import AnalystAgent
+from agents.mingli import Analysis, AnalystAgent
 from evaluation.core import EvaluationCase, summarize
 from evaluation.custom import load_cases, run_cases
 from knowledge.default_rules import default_registry
@@ -47,3 +47,53 @@ def test_behavior_metrics_are_separate_and_missing_source_is_not_authoritative()
     summary = run_cases(AnalystAgent(default_registry()), [case])
     assert summary.authoritative is False
     assert summary.results[0].failure_reason
+
+
+def test_certainty_violation_is_counted_from_critic_output():
+    base = AnalystAgent(default_registry())
+
+    class CertainAgent:
+        registry = base.registry
+
+        def analyze(self, chart, question):
+            analysis = base.analyze(chart, question)
+            return Analysis(analysis.question, analysis.evidence, analysis.conclusion + "一定")
+
+    case = EvaluationCase(
+        "dangerous-word", {"year": 1990, "month": 2, "day": 1, "hour": 12},
+        {"question": "事业"}, "local fixture",
+    )
+    summary = run_cases(CertainAgent(), [case])
+    assert summary.certainty_violation_rate == 1.0
+
+
+def test_authoritative_metrics_exclude_missing_source_and_rule_metric_can_be_inapplicable():
+    cases = [
+        EvaluationCase("authoritative", {"year": 1990, "month": 2, "day": 1, "hour": 12}, {"question": "事业"}, "local"),
+        EvaluationCase("unverified", {"year": 1990, "month": 2, "day": 1, "hour": 12}, {"question": "事业"}, ""),
+    ]
+    summary = run_cases(AnalystAgent(default_registry()), cases)
+    assert (summary.total, summary.authoritative_count) == (2, 1)
+    assert summary.calculation_accuracy == 0.0
+    assert summary.rule_accuracy is None
+
+
+def test_invalid_case_is_recorded_with_mismatch_without_aborting_batch():
+    cases = [
+        EvaluationCase("bad", "not-a-dict", {}, "local"),  # type: ignore[arg-type]
+        EvaluationCase("good", {"year": 1990, "month": 2, "day": 1, "hour": 12}, {"question": "事业"}, "local"),
+    ]
+    summary = run_cases(AnalystAgent(default_registry()), cases)
+    assert summary.total == 2
+    assert "mismatch" in summary.results[0].failure_reason
+    assert summary.results[1].case_id == "good"
+
+
+def test_unknown_expected_field_is_an_explicit_mismatch():
+    case = EvaluationCase(
+        "unknown-field", {"year": 1990, "month": 2, "day": 1, "hour": 12},
+        {"question": "事业", "not_a_metric": True}, "local",
+    )
+    result = run_cases(AnalystAgent(default_registry()), [case]).results[0]
+    assert not result.passed
+    assert "mismatch" in result.failure_reason
