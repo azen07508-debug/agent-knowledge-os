@@ -6,3 +6,5 @@ pydantic
 rich
 pytest
 sxtwl==2.0.7
+fastapi
+uvicorn

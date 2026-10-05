@@ -661,6 +661,8 @@ class FateBenchEvaluator:
 
 ### Phase 8：Memory Layer（记忆层）
 
+**当前状态（2026-10-04）**：现有项目 Memory API 可复用；命理专用用户档案和分析持久化尚未接入。
+
 **目标**：保存用户的历史提问和命盘，形成个人档案。
 
 #### 8.1 记忆分类
@@ -722,6 +724,8 @@ class AnalysisRecord:
 
 ### Phase 9：Web UI（用户界面）
 
+**当前状态（2026-10-04）**：尚未实现；当前先提供本地 FastAPI JSON API。
+
 **目标**：清晰展示推理过程，而不是只给一个结论。
 
 #### 9.1 界面结构
@@ -782,6 +786,8 @@ class AnalysisRecord:
 ---
 
 ### Phase 10：API Layer（API层）
+
+**当前状态（2026-10-04）**：本地 FastAPI MVP 已实现 `/api/health`、`/api/chart`、`/api/analyze`；鉴权、限流和持久化待完成。
 
 **目标**：提供标准 API，供第三方集成。
 
