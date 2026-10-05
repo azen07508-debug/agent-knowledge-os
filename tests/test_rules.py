@@ -37,12 +37,28 @@ def test_registry_rejects_duplicate_and_unknown_conflict():
 
 def test_registry_matches_only_complete_conditions():
     registry = RuleRegistry()
-    registry.add(rule(condition={"x": 1, "y": "yes"}))
+    registry.add(rule(condition={"x": 1, "y": "yes"}, status="ACTIVE"))
 
     assert registry.match({"x": 1}) == ()
     matches = registry.match({"x": 1, "y": "yes"})
     assert len(matches) == 1
     assert matches[0].matched_conditions == ("x", "y")
+
+
+def test_registry_excludes_unreviewed_by_default_but_can_include_explicitly():
+    registry = RuleRegistry()
+    registry.add(rule())
+
+    assert registry.match({"x": 1}) == ()
+    assert len(registry.match({"x": 1}, include_unreviewed=True)) == 1
+
+
+def test_registry_always_excludes_deprecated_rules():
+    registry = RuleRegistry()
+    registry.add(rule(status="DEPRECATED"))
+
+    assert registry.match({"x": 1}) == ()
+    assert registry.match({"x": 1}, include_unreviewed=True) == ()
 
 
 def test_registry_filters_by_school_and_category():
@@ -58,3 +74,27 @@ def test_conflicts_are_explicit_and_deduplicated():
     registry.add(rule(id="B", conflicts_with=("A",)))
 
     assert registry.conflicts(["A", "B"]) == (("A", "B"),)
+
+
+def test_add_many_allows_forward_and_bidirectional_conflicts():
+    registry = RuleRegistry()
+
+    registry.add_many([
+        rule(id="A", conflicts_with=("B",)),
+        rule(id="B", conflicts_with=("A",)),
+    ])
+
+    assert registry.conflicts(["A", "B"]) == (("A", "B"),)
+
+
+def test_add_many_is_atomic_when_conflict_reference_is_unknown():
+    registry = RuleRegistry()
+    registry.add(rule(id="existing", status="ACTIVE"))
+
+    with pytest.raises(ValueError, match="未知冲突"):
+        registry.add_many([
+            rule(id="valid", status="ACTIVE"),
+            rule(id="invalid", conflicts_with=("missing",)),
+        ])
+
+    assert tuple(rule.id for rule in registry.list()) == ("existing",)

@@ -65,8 +65,20 @@ class RuleRegistry:
             raise ValueError(f"规则 {rule.id} 引用了未知冲突规则：{', '.join(unknown)}")
 
     def add_many(self, rules: list[Rule] | tuple[Rule, ...]) -> None:
-        for rule in rules:
-            self.add(rule)
+        candidates = tuple(rules)
+        candidate_ids = [rule.id for rule in candidates]
+        duplicates = {rule_id for rule_id in candidate_ids if candidate_ids.count(rule_id) > 1}
+        if duplicates:
+            raise ValueError(f"规则 ID 已存在：{', '.join(sorted(duplicates))}")
+        existing_duplicates = [rule_id for rule_id in candidate_ids if rule_id in self._rules]
+        if existing_duplicates:
+            raise ValueError(f"规则 ID 已存在：{', '.join(existing_duplicates)}")
+        available_ids = set(self._rules) | set(candidate_ids)
+        for rule in candidates:
+            unknown = [item for item in rule.conflicts_with if item not in available_ids]
+            if unknown:
+                raise ValueError(f"规则 {rule.id} 引用了未知冲突规则：{', '.join(unknown)}")
+        self._rules.update({rule.id: rule for rule in candidates})
 
     def get(self, rule_id: str) -> Rule:
         try:
@@ -87,12 +99,12 @@ class RuleRegistry:
         *,
         school: str = "",
         category: str = "",
-        include_unreviewed: bool | None = None,
+        include_unreviewed: bool = False,
     ) -> tuple[RuleMatch, ...]:
         matches = []
         for rule in self.list(school=school, category=category):
             if rule.status == "DEPRECATED" or (
-                rule.status == "UNREVIEWED" and include_unreviewed is False
+                rule.status == "UNREVIEWED" and not include_unreviewed
             ):
                 continue
             matched = tuple(key for key, expected in rule.condition.items() if facts.get(key) == expected)
