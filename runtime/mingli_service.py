@@ -69,7 +69,19 @@ class MingLiService:
             "strategy_selection": "required",
             "message": "未执行策略；请显式选择 school、policy、version。当前无默认策略。",
         }
-        if all(value is not None for value in selector):
+        if all(value is None for value in selector):
+            analysis = replace(
+                analysis,
+                evidence=replace(
+                    analysis.evidence,
+                    matches=(),
+                    conflicts=(),
+                    strength=0.0,
+                    rule_statuses=(),
+                ),
+                conclusion="未执行策略分析；请显式选择 school、policy、version。",
+            )
+        else:
             result = self.strategy_registry.run(
                 chart, school=school, policy=policy, version=version
             )

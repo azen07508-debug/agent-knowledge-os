@@ -54,6 +54,10 @@ class ReportGenerator:
         if not evidence.matches:
             return "未匹配规则。"
         return "\n".join(
+            f"- {ReportGenerator._safe_text(str(match.rule.id))}"
+            f"：{ReportGenerator._safe_text(match.rule.conclusion)}（来源："
+            f"{ReportGenerator._safe_text(match.rule.source)}；UNREVIEWED；仅内部测试，非权威引用）"
+            if match.rule.status == "UNREVIEWED" else
             f"- {ReportGenerator._safe_text(str(match.rule.id))}："
             f"{ReportGenerator._safe_text(match.rule.conclusion)}（来源："
             f"{ReportGenerator._safe_text(match.rule.source)}）"
@@ -71,6 +75,8 @@ class ReportGenerator:
 
     @staticmethod
     def _conclusion(analysis: Analysis) -> str:
+        if any(match.rule.status == "UNREVIEWED" for match in analysis.evidence.matches):
+            return "存在 UNREVIEWED 规则，仅内部测试，不能作为非权威引用输出。"
         if analysis.evidence.strength < 0.5:
             return "证据强度较低，仅能提供限制说明，不能输出确定性预测。"
         return ReportGenerator._safe_text(analysis.conclusion)

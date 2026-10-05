@@ -62,6 +62,9 @@ def test_analyze_without_selector_returns_explainable_metadata():
     assert body["strategy"] is None
     assert body["metadata"]["strategy_selection"] == "required"
     assert "显式选择" in body["metadata"]["message"]
+    assert body["analysis"]["evidence"]["facts"]
+    assert body["analysis"]["evidence"]["rules"] == []
+    assert not body["analysis"]["conclusion"].startswith("基于已匹配")
 
 
 @pytest.mark.parametrize(

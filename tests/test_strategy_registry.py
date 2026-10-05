@@ -33,6 +33,7 @@ def test_registry_runs_explicit_strategy_and_preserves_provenance():
     assert result.context.school == "classical"
     assert result.context.policy == "classical_approx_v1"
     assert result.context.version == "1"
+    assert result.approximate is True
 
 
 def test_registry_allows_different_policies_in_same_school():

@@ -88,6 +88,16 @@ class CriticAgent:
             issues.append("存在规则冲突，必须向用户披露")
         if any(not match.rule.source.strip() for match in analysis.evidence.matches):
             issues.append("存在缺少来源的规则引用")
+        unreviewed = tuple(
+            match.rule.id
+            for match in analysis.evidence.matches
+            if match.rule.status == "UNREVIEWED"
+        )
+        if unreviewed:
+            issues.append(
+                "存在 UNREVIEWED 规则，仅内部测试，不能作为非权威引用输出："
+                + "、".join(sorted(unreviewed))
+            )
         if analysis.evidence.strength < 0.5 and any(
             word in analysis.conclusion for word in ("会", "将", "成功", "失败")
         ):

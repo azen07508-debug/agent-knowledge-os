@@ -10,6 +10,7 @@ from engines.bazi.strategy_compare import compare_results
 from knowledge.default_rules import default_registry
 from knowledge.evidence import Fact
 from knowledge.rules import RuleRegistry
+from tests.test_evidence_provenance import registry_with
 
 
 def chart():
@@ -91,6 +92,40 @@ def test_critic_checks_rules_against_registry_and_visible_text():
     assert any("一定" in issue for issue in critique.issues)
 
 
+def test_critic_rejects_unreviewed_rule_even_when_registry_contains_it():
+    registry = registry_with()
+    analysis = AnalystAgent(registry).analyze(chart(), "事业")
+    analysis = replace(
+        analysis,
+        evidence=replace(
+            analysis.evidence,
+            matches=(registry.match({"day_master": chart().day_master}, include_unreviewed=True)[0],),
+            rule_statuses=("UNREVIEWED",),
+        ),
+    )
+
+    critique = CriticAgent(registry).critique(analysis)
+
+    assert not critique.passed
+    assert any("UNREVIEWED" in issue for issue in critique.issues)
+
+
+def test_report_marks_unreviewed_rule_as_internal_non_authoritative():
+    registry = registry_with()
+    analysis = AnalystAgent(registry).analyze(chart(), "事业")
+    match = registry.match({"day_master": chart().day_master}, include_unreviewed=True)[0]
+    analysis = replace(
+        analysis,
+        evidence=replace(analysis.evidence, matches=(match,), rule_statuses=("UNREVIEWED",)),
+    )
+
+    report = ReportGenerator().render(analysis)
+
+    assert "UNREVIEWED" in report
+    assert "仅内部测试" in report
+    assert "非权威引用" in report
+
+
 def test_critic_does_not_flag_fixed_probability_disclaimer():
     analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
 
@@ -143,9 +178,15 @@ def test_report_sanitizes_conflict_provenance_and_evidence_conflicts():
         analysis,
         evidence=replace(analysis.evidence, conflicts=(("左侧一定", "右侧保证"),)),
     )
+    other_context = StrategyContext("学校二", "策略二", "1", ())
     conflict_report = compare_results(
-        (StrategyResult(dangerous_context, ("事实",), 0.5, ("冲突概率",), False),)
+        (
+            StrategyResult(dangerous_context, ("事实",), 0.5, ("冲突概率",), False),
+            StrategyResult(other_context, ("事实二",), 0.4, ("限制二",), True),
+        )
     )
+
+    assert conflict_report.has_conflict is True
 
     report = ReportGenerator().render(analysis, conflict_report)
 
