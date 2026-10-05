@@ -30,3 +30,9 @@
 
 - 当前 `MingLiService` 内部使用默认 `StrategyRegistry`；若后续需要注入自定义策略，应在后续任务中增加显式构造参数，当前不扩大 Task 7 范围。
 - 工作区原有未跟踪 `uv.lock` 未纳入本次提交。
+
+## Reviewer 修复（P1/P2）
+
+- 区分 all `None`（合法无 selector metadata）、partial `None`（422）、三项空字符串/空白（422）和三项非空（查 registry）。
+- service 直接调用与 API 使用同一边界校验。
+- 新增空字符串、空白、partial selector 及 service 直调测试。

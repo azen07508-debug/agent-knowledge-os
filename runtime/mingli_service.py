@@ -56,8 +56,12 @@ class MingLiService:
         chart = self.calculator.calculate_chart(birth)
         analysis = self.analyst.analyze(chart, question)
         selector = (school, policy, version)
-        if any(value is not None for value in selector) and not all(selector):
-            raise ValueError("school、policy、version 必须同时提供。")
+        if any(value is None for value in selector) and not all(
+            value is None for value in selector
+        ):
+            raise ValueError("school、policy、version 必须同时提供，且不能为空或空白。")
+        if any(value is not None and not value.strip() for value in selector):
+            raise ValueError("school、policy、version 不能为空或空白。")
 
         strategy = None
         conflict_report = None
@@ -65,7 +69,7 @@ class MingLiService:
             "strategy_selection": "required",
             "message": "未执行策略；请显式选择 school、policy、version。当前无默认策略。",
         }
-        if all(selector):
+        if all(value is not None for value in selector):
             result = self.strategy_registry.run(
                 chart, school=school, policy=policy, version=version
             )

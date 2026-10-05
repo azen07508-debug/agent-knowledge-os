@@ -1,8 +1,10 @@
 """策略选择 API 测试。"""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.server import app
+from runtime.mingli_service import MingLiService
 
 client = TestClient(app)
 
@@ -60,3 +62,42 @@ def test_analyze_without_selector_returns_explainable_metadata():
     assert body["strategy"] is None
     assert body["metadata"]["strategy_selection"] == "required"
     assert "显式选择" in body["metadata"]["message"]
+
+
+@pytest.mark.parametrize(
+    ("school", "policy", "version"),
+    [
+        ("", "", ""),
+        (" ", " ", " "),
+        ("classical", None, "1"),
+    ],
+)
+def test_analyze_rejects_empty_or_partial_selector(school, policy, version):
+    response = client.post(
+        "/api/analyze",
+        json={**payload(), "school": school, "policy": policy, "version": version},
+    )
+
+    assert response.status_code == 422
+
+
+def test_service_rejects_empty_selector():
+    with pytest.raises(ValueError, match=r"不能为空|必须同时提供"):
+        MingLiService().analyze(
+            {key: value for key, value in payload().items() if key != "question"},
+            payload()["question"],
+            school="",
+            policy="",
+            version="",
+        )
+
+
+def test_service_rejects_whitespace_selector():
+    with pytest.raises(ValueError, match=r"不能为空|必须同时提供"):
+        MingLiService().analyze(
+            {key: value for key, value in payload().items() if key != "question"},
+            payload()["question"],
+            school=" ",
+            policy=" ",
+            version=" ",
+        )
