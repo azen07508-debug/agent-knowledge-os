@@ -81,3 +81,11 @@ def test_dayun_period_supports_legacy_read_only_mapping_access():
 def test_dayun_without_gender_is_rejected():
     with pytest.raises(ValueError, match="gender"):
         ClassicalApproxDayunPolicy().calculate(chart(gender=None))
+
+
+def test_dayun_approx_start_age_uses_birth_to_term_distance():
+    result = ClassicalApproxDayunPolicy().calculate(chart())
+
+    assert result.start_age != 3.0
+    assert result.approximate is True
+    assert any("节气" in conflict for conflict in result.conflicts)

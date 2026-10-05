@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+import sxtwl
+
 from engines.bazi.models import Chart
 from engines.bazi.sxtwl_provider import BRANCHES, STEMS
 
@@ -97,13 +99,20 @@ class ClassicalApproxDayunPolicy:
             )
             for index in range(1, 9)
         )
+        birth_jd = sxtwl.toJD(sxtwl.Time(
+            chart.birth.year, chart.birth.month, chart.birth.day,
+            chart.birth.hour, chart.birth.minute, 0,
+        ))
+        terms = sxtwl.getJieQiByYear(chart.birth.year)
+        term_jd = next(item.jd for item in terms if item.jqIndex in (3, 21))
+        start_age = abs(term_jd - birth_jd) / 3
         return DayunResult(
             context=self.context,
             evidence=("Chart.birth.gender", "Chart 年柱天干阴阳", "Chart 月柱"),
             confidence=0.5,
-            conflicts=("精确起运日期未计算",),
+            conflicts=("起运按出生时刻与节气间隔近似计算",),
             approximate=True,
             direction=direction,
-            start_age=3.0,
+            start_age=round(start_age, 4),
             periods=periods,
         )
