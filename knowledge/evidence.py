@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from engines.bazi.models import Chart
 from knowledge.rules import RuleMatch, RuleRegistry
+
+if TYPE_CHECKING:
+    from engines.bazi.strategies import StrategyContext
 
 
 @dataclass(frozen=True)
@@ -24,6 +27,8 @@ class Evidence:
     matches: tuple[RuleMatch, ...]
     conflicts: tuple[tuple[str, str], ...]
     strength: float
+    strategy_context: StrategyContext | None = None
+    rule_statuses: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -33,6 +38,16 @@ class Evidence:
             "sources": [match.rule.source for match in self.matches],
             "conflicts": list(self.conflicts),
             "strength": self.strength,
+            "strategy_context": (
+                {
+                    "school": self.strategy_context.school,
+                    "policy": self.strategy_context.policy,
+                    "version": self.strategy_context.version,
+                    "assumptions": list(self.strategy_context.assumptions),
+                }
+                if self.strategy_context is not None else None
+            ),
+            "rule_statuses": list(self.rule_statuses),
         }
 
 
@@ -47,13 +62,24 @@ def extract_facts(chart: Chart) -> tuple[Fact, ...]:
     return tuple(fact for fact in facts if fact.value is not None)
 
 
-def build_evidence(chart: Chart, registry: RuleRegistry, topic: str = "general") -> Evidence:
+def build_evidence(
+    chart: Chart,
+    registry: RuleRegistry,
+    topic: str = "general",
+    *,
+    strategy_context: StrategyContext | None = None,
+    include_unreviewed: bool = False,
+) -> Evidence:
     facts = extract_facts(chart)
     fact_map = {fact.type: fact.value for fact in facts}
-    matches = registry.match(fact_map)
+    matches = tuple(
+        match for match in registry.match(fact_map, include_unreviewed=include_unreviewed)
+        if include_unreviewed or match.rule.status != "UNREVIEWED"
+    )
     rule_ids = [match.rule.id for match in matches]
     conflicts = registry.conflicts(rule_ids)
     confidence = {"LOW": 0.4, "MEDIUM": 0.7, "HIGH": 1.0}
     base = sum(confidence[match.rule.confidence] for match in matches) / len(matches) if matches else 0.0
     strength = max(0.0, min(1.0, base - len(conflicts) * 0.15))
-    return Evidence(topic, facts, matches, conflicts, round(strength, 4))
+    statuses = tuple(match.rule.status for match in matches)
+    return Evidence(topic, facts, matches, conflicts, round(strength, 4), strategy_context, statuses)

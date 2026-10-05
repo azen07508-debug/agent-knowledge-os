@@ -17,6 +17,7 @@ DEFAULT_RULES = (
         conclusion="月柱天干呈现正官关系；仅说明结构事实，不单独推出职业结论。",
         confidence="MEDIUM",
         evidence_required=("month_ten_god", "day_master"),
+        status="UNREVIEWED",
     ),
     Rule(
         id="STRUCT_RELATION_001",
@@ -27,6 +28,7 @@ DEFAULT_RULES = (
         conclusion="四支中存在六冲结构；具体取象需结合流派和其他证据。",
         confidence="HIGH",
         evidence_required=("relations",),
+        status="UNREVIEWED",
     ),
     Rule(
         id="STRUCT_RELATION_002",
@@ -37,6 +39,7 @@ DEFAULT_RULES = (
         conclusion="四支中存在六合结构；具体取象需结合流派和其他证据。",
         confidence="HIGH",
         evidence_required=("relations",),
+        status="UNREVIEWED",
     ),
 )
 

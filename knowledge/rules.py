@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 VALID_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
+VALID_RULE_STATUSES = {"UNREVIEWED", "REVIEWED", "ACTIVE", "DEPRECATED"}
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class Rule:
     conflicts_with: tuple[str, ...] = ()
     evidence_required: tuple[str, ...] = ()
     note: str = ""
+    status: str = "UNREVIEWED"
 
     def __post_init__(self) -> None:
         if not self.id.strip():
@@ -34,6 +36,8 @@ class Rule:
             raise ValueError(f"规则 {self.id} 必须有 school。")
         if self.confidence not in VALID_CONFIDENCE:
             raise ValueError(f"规则 {self.id} 的 confidence 非法：{self.confidence}")
+        if self.status not in VALID_RULE_STATUSES:
+            raise ValueError(f"规则 {self.id} 的 status 非法：{self.status}")
         if not self.condition:
             raise ValueError(f"规则 {self.id} 必须有 condition。")
 
@@ -77,9 +81,20 @@ class RuleRegistry:
             and (not category or rule.category == category)
         )
 
-    def match(self, facts: dict[str, Any], *, school: str = "", category: str = "") -> tuple[RuleMatch, ...]:
+    def match(
+        self,
+        facts: dict[str, Any],
+        *,
+        school: str = "",
+        category: str = "",
+        include_unreviewed: bool | None = None,
+    ) -> tuple[RuleMatch, ...]:
         matches = []
         for rule in self.list(school=school, category=category):
+            if rule.status == "DEPRECATED" or (
+                rule.status == "UNREVIEWED" and include_unreviewed is False
+            ):
+                continue
             matched = tuple(key for key, expected in rule.condition.items() if facts.get(key) == expected)
             missing = tuple(key for key in rule.condition if key not in matched)
             if not missing:
