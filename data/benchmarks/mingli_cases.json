@@ -1,0 +1,19 @@
+[
+  {
+    "case_id": "mingli-local-001",
+    "source": "local deterministic sxtwl fixture",
+    "input": {"year": 1990, "month": 2, "day": 1, "hour": 12},
+    "expected": {
+      "question": "事业",
+      "provider": "sxtwl",
+      "day_master": "丁",
+      "pillars": [
+        {"name": "year", "heavenly_stem": "己", "earthly_branch": "巳", "ten_god": "食神", "na_yin": "大林木"},
+        {"name": "month", "heavenly_stem": "丁", "earthly_branch": "丑", "ten_god": "比肩", "na_yin": "涧下水"},
+        {"name": "day", "heavenly_stem": "丁", "earthly_branch": "酉", "ten_god": "日主", "na_yin": "山下火"},
+        {"name": "hour", "heavenly_stem": "丙", "earthly_branch": "午", "ten_god": "劫财", "na_yin": "天河水"}
+      ],
+      "relations": [{"type": "六害", "branches": ["丑", "午"], "pillars": ["month", "hour"]}]
+    }
+  }
+]
