@@ -20,8 +20,10 @@ class SourceItem:
 
     @classmethod
     def from_aihot(cls, raw: Mapping[str, Any]) -> SourceItem:
-        links: Mapping[str, Any] = raw.get("links") if isinstance(raw.get("links"), Mapping) else {}
-        source: Mapping[str, Any] = raw.get("source") if isinstance(raw.get("source"), Mapping) else {}
+        links_raw = raw.get("links")
+        source_raw = raw.get("source")
+        links: Mapping[str, Any] = links_raw if isinstance(links_raw, Mapping) else {}
+        source: Mapping[str, Any] = source_raw if isinstance(source_raw, Mapping) else {}
         url = str(links.get("original") or links.get("aihot") or "").strip()
         if not url:
             raise ValueError("SourceItem 必须有来源 URL")
