@@ -1,0 +1,62 @@
+"""策略选择 API 测试。"""
+
+from fastapi.testclient import TestClient
+
+from api.server import app
+
+client = TestClient(app)
+
+
+def payload():
+    return {
+        "year": 1990,
+        "month": 2,
+        "day": 1,
+        "hour": 12,
+        "gender": "男",
+        "question": "事业",
+    }
+
+
+def test_analyze_accepts_explicit_strategy_selector():
+    response = client.post(
+        "/api/analyze",
+        json={
+            **payload(),
+            "school": "classical",
+            "policy": "classical_approx_v1",
+            "version": "1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["strategy"]["context"] == {
+        "school": "classical",
+        "policy": "classical_approx_v1",
+        "version": "1",
+        "assumptions": ["按月柱顺逆推导", "起运年龄按三天一岁近似", "不计算精确起运时刻"],
+    }
+    assert "conflicts" in body
+    assert "限制" in body["report"]
+    assert body["metadata"]["strategy_selection"] == "explicit"
+
+
+def test_analyze_rejects_unknown_strategy_without_fallback():
+    response = client.post(
+        "/api/analyze",
+        json={**payload(), "school": "missing", "policy": "missing", "version": "1"},
+    )
+
+    assert response.status_code == 422
+    assert "未找到策略" in response.json()["detail"]
+
+
+def test_analyze_without_selector_returns_explainable_metadata():
+    response = client.post("/api/analyze", json=payload())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["strategy"] is None
+    assert body["metadata"]["strategy_selection"] == "required"
+    assert "显式选择" in body["metadata"]["message"]

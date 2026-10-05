@@ -26,6 +26,9 @@ class BirthRequest(BaseModel):
 
 class AnalyzeRequest(BirthRequest):
     question: str = Field(min_length=1)
+    school: str | None = None
+    policy: str | None = None
+    version: str | None = None
 
 
 service = MingLiService()
@@ -41,7 +44,7 @@ def health() -> dict[str, str]:
 def chart(request: BirthRequest) -> dict[str, Any]:
     try:
         response = service.analyze(request.model_dump(), "命盘结构")
-    except (TypeError, ValueError, RuntimeError) as exc:
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return response.chart
 
@@ -49,7 +52,14 @@ def chart(request: BirthRequest) -> dict[str, Any]:
 @app.post("/api/analyze")
 def analyze(request: AnalyzeRequest) -> dict[str, Any]:
     try:
-        response = service.analyze(request.model_dump(exclude={"question"}), request.question)
-    except (TypeError, ValueError, RuntimeError) as exc:
+        data = request.model_dump()
+        response = service.analyze(
+            {key: value for key, value in data.items() if key not in {"question", "school", "policy", "version"}},
+            request.question,
+            school=request.school,
+            policy=request.policy,
+            version=request.version,
+        )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return response.to_dict()
