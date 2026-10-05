@@ -20,9 +20,14 @@ def run_cases(agent: AnalystAgent, cases: list[EvaluationCase]) -> EvaluationSum
                 raise TypeError("mismatch: input_data and expected must be objects")
             if not isinstance(case.source, str):
                 raise TypeError("mismatch: source must be a string")
+            if any(not isinstance(key, str) for key in case.expected):
+                raise TypeError("mismatch: expected keys must be strings")
+            question = case.expected.get("question")
+            if not isinstance(question, str) or not question.strip():
+                raise ValueError("mismatch: expected.question must be a non-empty string")
             birth = BirthInput(**case.input_data)
             chart = calculator.calculate_chart(birth)
-            analysis = agent.analyze(chart, case.expected.get("question", ""))
+            analysis = agent.analyze(chart, question)
             actual = {
                 "provider": chart.provider,
                 "day_master": chart.day_master,

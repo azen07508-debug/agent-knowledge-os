@@ -31,3 +31,10 @@ Follow-up verification:
 - `tests/test_evaluation.py tests/test_strategy_evaluation.py`: 8 passed.
 - Full suite: 545 passed, 1 existing dependency deprecation warning.
 - Ruff: passed.
+
+## Scoped re-review follow-up
+
+- Added explicit validation before `agent.analyze`: `expected.question` must be a non-empty string and every expected key must be a string.
+- Malformed expected cases are retained as `mismatch` failures and do not prevent subsequent valid cases from running.
+
+Verification:专项 8 passed；相关回归 10 passed；全量 547 passed；Ruff passed；全量仍有 1 条既有依赖弃用警告。

@@ -97,3 +97,30 @@ def test_unknown_expected_field_is_an_explicit_mismatch():
     result = run_cases(AnalystAgent(default_registry()), [case]).results[0]
     assert not result.passed
     assert "mismatch" in result.failure_reason
+
+
+def test_malformed_expected_question_does_not_abort_following_case():
+    cases = [
+        EvaluationCase(
+            "bad-question", {"year": 1990, "month": 2, "day": 1, "hour": 12},
+            {"question": None}, "local",
+        ),
+        EvaluationCase(
+            "good-question", {"year": 1990, "month": 2, "day": 1, "hour": 12},
+            {"question": "事业"}, "local",
+        ),
+    ]
+    summary = run_cases(AnalystAgent(default_registry()), cases)
+    assert summary.results[0].case_id == "bad-question"
+    assert "mismatch" in summary.results[0].failure_reason
+    assert summary.results[1].case_id == "good-question"
+    assert summary.results[1].failure_reason == ""
+
+
+def test_non_string_expected_key_is_recorded_as_mismatch():
+    case = EvaluationCase(
+        "bad-key", {"year": 1990, "month": 2, "day": 1, "hour": 12},
+        {"question": "事业", 1: True}, "local",  # type: ignore[dict-item]
+    )
+    result = run_cases(AnalystAgent(default_registry()), [case]).results[0]
+    assert "mismatch" in result.failure_reason
