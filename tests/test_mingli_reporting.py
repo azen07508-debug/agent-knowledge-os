@@ -5,8 +5,10 @@ from dataclasses import replace
 from agents.mingli import AnalystAgent, CriticAgent
 from agents.report import ReportGenerator
 from engines.bazi import BirthInput, SxtwlBaziProvider
-from engines.bazi.strategies import StrategyContext
+from engines.bazi.strategies import StrategyContext, StrategyResult
+from engines.bazi.strategy_compare import compare_results
 from knowledge.default_rules import default_registry
+from knowledge.rules import RuleRegistry
 
 
 def chart():
@@ -28,20 +30,36 @@ def test_report_has_fixed_sections_and_strategy_metadata():
 
 
 def test_report_discloses_each_strategy_on_conflict():
-    context = StrategyContext("school-a", "policy-a", "1", ())
+    left_context = StrategyContext("school-a", "policy-a", "1", ())
+    right_context = StrategyContext("school-b", "policy-b", "2", ())
     analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
-    analysis = replace(analysis, evidence=replace(analysis.evidence, strategy_context=context))
+    analysis = replace(analysis, evidence=replace(analysis.evidence, strategy_context=left_context))
+    conflict_report = compare_results(
+        (
+            StrategyResult(left_context, ("fact-a",), 0.8, ("left-limit",), False),
+            StrategyResult(right_context, ("fact-b",), 0.4, ("right-limit",), True),
+        )
+    )
+
+    report = ReportGenerator().render(analysis, conflict_report)
+
+    assert "school-a" in report and "school-b" in report
+    assert "fact-a" in report and "fact-b" in report
+    assert "confidence" in report and "approximate" in report
+    assert "differences" in report
+    assert "冲突" in report
+
+
+def test_report_honestly_handles_conflict_without_results():
+    analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
     conflict_report = type("Conflict", (), {
-        "has_conflict": True,
-        "summary": "发现冲突",
-        "results": (),
-        "conflicts": (),
+        "has_conflict": True, "summary": "发现冲突", "results": (), "conflicts": (),
     })()
 
     report = ReportGenerator().render(analysis, conflict_report)
 
-    assert "school-a" in report
-    assert "冲突" in report
+    assert "缺少策略结果" in report
+    assert "无法声称结果已保留" in report
 
 
 def test_critic_rejects_all_dangerous_certainty_words():
@@ -50,6 +68,49 @@ def test_critic_rejects_all_dangerous_certainty_words():
         critique = CriticAgent().critique(replace(analysis, conclusion=f"结果{word}发生"))
         assert not critique.passed
         assert any(word in issue for issue in critique.issues)
+
+
+def test_critic_checks_rules_against_registry_and_visible_text():
+    analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
+    rule = default_registry().list()[0]
+    analysis = replace(
+        analysis,
+        evidence=replace(
+            analysis.evidence,
+            matches=(type("Match", (), {"rule": rule})(),),
+        ),
+    )
+    empty_registry = RuleRegistry()
+    critic = CriticAgent(empty_registry)
+
+    critique = critic.critique(analysis, visible_text="规则结论：结果一定发生")
+
+    assert not critique.passed
+    assert any("不存在" in issue or "注册" in issue for issue in critique.issues)
+    assert any("一定" in issue for issue in critique.issues)
+
+
+def test_critic_does_not_flag_fixed_probability_disclaimer():
+    analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
+
+    critique = CriticAgent(default_registry()).critique(
+        analysis, visible_text="证据强度不等同于概率。"
+    )
+
+    assert critique.passed
+
+
+def test_report_blocks_dangerous_rule_conclusion_text():
+    analysis = AnalystAgent(default_registry()).analyze(chart(), "事业")
+    rule = default_registry().list()[0]
+    dangerous_rule = replace(rule, conclusion="结果一定发生")
+    match = type("Match", (), {"rule": dangerous_rule})()
+    analysis = replace(analysis, evidence=replace(analysis.evidence, matches=(match,)))
+
+    report = ReportGenerator().render(analysis)
+
+    assert "结果一定发生" not in report
+    assert "已拦截危险措辞" in report
 
 
 def test_low_evidence_report_does_not_make_deterministic_prediction():

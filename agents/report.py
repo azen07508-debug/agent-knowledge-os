@@ -47,15 +47,22 @@ class ReportGenerator:
         if not evidence.matches:
             return "未匹配规则。"
         return "\n".join(
-            f"- {match.rule.id}：{match.rule.conclusion}（来源：{match.rule.source}）"
+            f"- {match.rule.id}：{ReportGenerator._safe_text(match.rule.conclusion)}（来源：{match.rule.source}）"
             for match in evidence.matches
         )
+
+    @staticmethod
+    def _safe_text(text: str) -> str:
+        dangerous = ("必然", "一定", "保证", "概率")
+        if any(word in text for word in dangerous):
+            return "已拦截危险措辞。"
+        return text
 
     @staticmethod
     def _conclusion(analysis: Analysis) -> str:
         if analysis.evidence.strength < 0.5:
             return "证据强度较低，仅能提供限制说明，不能输出确定性预测。"
-        return analysis.conclusion
+        return ReportGenerator._safe_text(analysis.conclusion)
 
     @staticmethod
     def _conflicts(evidence: Any, conflict_report: Any | None) -> str:
@@ -63,9 +70,29 @@ class ReportGenerator:
             strategies = []
             for result in getattr(conflict_report, "results", ()):
                 context = result.context
-                strategies.append(f"{context.school}/{context.policy}@{context.version}")
-            detail = "；".join(strategies) or "各策略结果已保留"
-            return f"{getattr(conflict_report, 'summary', '存在策略冲突')}\n策略：{detail}"
+                strategies.append(
+                    f"- provenance={context.school}/{context.policy}@{context.version}; "
+                    f"evidence={ReportGenerator._safe_text(str(result.evidence))}; "
+                    f"confidence={result.confidence}; approximate={result.approximate}; "
+                    f"conflicts={ReportGenerator._safe_text(str(result.conflicts))}"
+                )
+            if not strategies:
+                detail = "缺少策略结果，无法声称结果已保留。"
+            else:
+                detail = "\n".join(strategies)
+            differences = getattr(conflict_report, "differences", None)
+            if differences is None:
+                differences = tuple(
+                    getattr(conflict, "differences", {})
+                    for conflict in getattr(conflict_report, "conflicts", ())
+                )
+            summary = ReportGenerator._safe_text(
+                str(getattr(conflict_report, "summary", "存在策略冲突"))
+            )
+            conflict_lines = f"{summary}\n策略：{detail}"
+            if differences is not None:
+                conflict_lines += f"\ndifferences：{ReportGenerator._safe_text(str(differences))}"
+            return conflict_lines
         if evidence.conflicts:
             return "；".join(f"{left} ↔ {right}" for left, right in evidence.conflicts)
         return "未发现冲突。"

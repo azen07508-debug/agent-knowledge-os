@@ -44,17 +44,46 @@ class AnalystAgent:
 class CriticAgent:
     """检查结论是否越过证据边界。"""
 
-    def critique(self, analysis: Analysis) -> Critique:
+    def __init__(self, registry: RuleRegistry | None = None) -> None:
+        self.registry = registry
+
+    def critique(
+        self,
+        analysis: Analysis,
+        *,
+        visible_text: str = "",
+        conflict_report: object | None = None,
+    ) -> Critique:
         issues: list[str] = []
-        rule_ids = {match.rule.id for match in analysis.evidence.matches}
         dangerous_words = ("必然", "一定", "保证", "概率")
-        found_words = tuple(word for word in dangerous_words if word in analysis.conclusion)
+        text = "\n".join(
+            (
+                analysis.conclusion,
+                *(match.rule.conclusion for match in analysis.evidence.matches),
+                visible_text,
+                repr(conflict_report),
+            )
+        ).replace("证据强度不等同于概率", "")
+        found_words = tuple(word for word in dangerous_words if word in text)
         if found_words:
             issues.append(f"结论包含确定性/危险措辞：{'、'.join(found_words)}")
         if not analysis.evidence.matches and analysis.conclusion.startswith("基于"):
             issues.append("结论声称有规则支持，但证据为空")
-        if any(rule_id not in rule_ids for rule_id in analysis.evidence.to_dict()["rules"]):
-            issues.append("存在无法追溯的规则引用")
+        if self.registry is not None:
+            missing: list[str] = []
+            inconsistent: list[str] = []
+            for match in analysis.evidence.matches:
+                try:
+                    registered = self.registry.get(match.rule.id)
+                except KeyError:
+                    missing.append(match.rule.id)
+                else:
+                    if registered != match.rule:
+                        inconsistent.append(match.rule.id)
+            if missing:
+                issues.append(f"规则注册表中不存在引用：{'、'.join(sorted(missing))}")
+            if inconsistent:
+                issues.append(f"证据规则与注册表内容不一致：{'、'.join(sorted(inconsistent))}")
         if analysis.evidence.conflicts:
             issues.append("存在规则冲突，必须向用户披露")
         if any(not match.rule.source.strip() for match in analysis.evidence.matches):
