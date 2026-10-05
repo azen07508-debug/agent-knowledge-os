@@ -2,6 +2,47 @@
 
 > 保存日期：2026-09-28。来源：用户给出的 22 阶段执行路线，作为本仓库后续开发的唯一阶段基准。
 > 验收原则见文末：每个阶段必须过测试并输出十项验收报告才能进入下一阶段。
+> 进度快照最近更新：2026-10-05（对照 git 历史与 `.superpowers/sdd` 执行账本）。
+
+## 进度快照（2026-10-05）
+
+状态口径：**完成**=有实现且测试通过；**部分**=框架完成但有明确缺口；证据为对应测试文件。
+
+| Phase | 状态 | 证据 / 缺口 |
+|---|---|---|
+| 0 总原则 | 遵循中 | Human Gate、不自动改策略、证据边界均有测试约束 |
+| 1 Memory Layer | 完成 | `test_creator_memory` `test_everos_memory` `test_obsidian_exporter`；9 分类落盘 obsidian_vault |
+| 2 Memory API | 完成 | `test_memory_api`；search/get/create/update/archive + 5 个 record* 齐全 |
+| 3 Memory Governance | 完成 | `test_memory_governance`；frontmatter 必填 + review/supersede/health |
+| 4 Research Layer | 完成 | `test_research_store` `test_reach_research`；2026-10-04 新增 `SourceItem` 统一转换与 AIHOT 增量 cursor |
+| 5 Research Agent | 完成 | `test_research_agent` |
+| 6 Topic Engine | 完成 | `test_topic_engine` |
+| 7 Strategy Agent | 完成 | `test_strategy_agent`；只产候选不写策略 |
+| 8 Content Object | 完成 | `test_content_object` `test_content_store`；状态机 + APPROVED 保护 + 证据状态专用升级 |
+| 9 Content Agent | 完成 | `test_content_agent` `test_content_draft` `test_content_pack`；三道检查 |
+| 10 X Layer | 部分 | adapter/后端测试全过；twitter-cli 凭据未落盘 → 删除回退受阻，遗留错误评论待手动删 |
+| 11 X 内容工作流 | 完成 | `test_x_workflow` `test_publish_worker`（canonical post）；`platform_posts` 边界、部分成功不标 SUCCEEDED |
+| 12 Human Review | 完成 | `test_human_review` `test_review_server`；Review Dashboard 抽屉可批准/驳回，API 仅 127.0.0.1 |
+| 13 国内平台 Layer | 部分 | 6 平台 Adapter 契约齐（`test_platform_adapter`），全部 CONTRACT_ONLY：真实发布/读指标未接 |
+| 14 Platform Formatter | 完成 | `test_formatter` |
+| 15 Publisher Layer | 完成 | `test_publish_queue` `test_publish_worker` `test_retry_policy` `test_delete_fallback`；X 真实发布，日志齐全 |
+| 16 Analytics Layer | 完成（数据源仅 X） | `test_post_analytics`；六平台 `NOT_IMPLEMENTED` 如实返回不编数 |
+| 17 Analytics Agent | 完成 | `test_analytics_agent`；样本闸门、策略候选 PROPOSED 不生效 |
+| 18 Memory Feedback Loop | 完成 | `test_feedback_loop` + 2026-10-05 新增 `performance_insights`（三维度聚合/工具帖四要素） |
+| 19 Dashboard | 完成 | `test_dashboard`；11 页 + 表现洞察样本量/证据状态 |
+| 20 Memory Dashboard | 完成 | `test_memory_dashboard`；7 视图含 Memory Health |
+| 21 自动化 Agent | 完成 | `test_daily_pipeline` `test_briefing`；launchd `com.creatoros.daily/evening`；新增 `scripts/start.sh` 一键工作台与 Orchestrator 阶段闸门 |
+| 22 最终能力 | 部分 | 早间简报/晚间复盘已跑通（默认离线、人审闸门）；缺国内平台真实发布与非 X 指标数据 |
+
+### 阻塞与下一步
+
+1. **全量测试门禁**：`tests/test_time_engine.py` 1 处失败 + 1 处 Ruff 报错来自未提交的命理 WIP（期望 forward 实为 backward），与本计划无关，待该 WIP 收尾后复验全量。
+2. **X 删除回退**：twitter-cli 凭据未落盘，遗留错误评论需手动删除。
+3. **Phase 13/22 卡点**：六平台真实发布与指标读 API 未接，保持 CONTRACT_ONLY，接入顺序 小红书 → 抖音 → B站 → 公众号 → 微博 → 视频号。
+4. **Orchestrator 执行器接线**：9 个阶段闸门已就位（`scripts/run_orchestrator.py`），各阶段具体执行器逐步接入，默认全关网络/模型/发布。
+5. **AIHOT 侧**：Mimo 429 修复 4 个文件在 aihot 仓待提交；日报 launchd 首跑待观察。
+
+---
 
 ## 一、最终目标
 
