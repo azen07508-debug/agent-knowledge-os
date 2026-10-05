@@ -47,12 +47,20 @@ class CriticAgent:
     def critique(self, analysis: Analysis) -> Critique:
         issues: list[str] = []
         rule_ids = {match.rule.id for match in analysis.evidence.matches}
-        if "一定" in analysis.conclusion or "必然" in analysis.conclusion:
-            issues.append("结论包含确定性预测措辞")
+        dangerous_words = ("必然", "一定", "保证", "概率")
+        found_words = tuple(word for word in dangerous_words if word in analysis.conclusion)
+        if found_words:
+            issues.append(f"结论包含确定性/危险措辞：{'、'.join(found_words)}")
         if not analysis.evidence.matches and analysis.conclusion.startswith("基于"):
             issues.append("结论声称有规则支持，但证据为空")
         if any(rule_id not in rule_ids for rule_id in analysis.evidence.to_dict()["rules"]):
             issues.append("存在无法追溯的规则引用")
         if analysis.evidence.conflicts:
             issues.append("存在规则冲突，必须向用户披露")
+        if any(not match.rule.source.strip() for match in analysis.evidence.matches):
+            issues.append("存在缺少来源的规则引用")
+        if analysis.evidence.strength < 0.5 and any(
+            word in analysis.conclusion for word in ("会", "将", "成功", "失败")
+        ):
+            issues.append("证据强度较低，不得输出确定性预测")
         return Critique(not issues, tuple(issues))
