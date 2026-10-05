@@ -3,7 +3,12 @@
 import pytest
 
 from engines.bazi import BirthInput, SxtwlBaziProvider
-from engines.bazi.time_engine import DayunPolicy, sexagenary_year, year_contexts
+from engines.bazi.time_engine import (
+    DayunPolicy,
+    liu_month_contexts,
+    sexagenary_year,
+    year_contexts,
+)
 
 
 def chart():
@@ -31,3 +36,18 @@ def test_year_contexts_reject_reverse_range():
 def test_dayun_policy_does_not_guess():
     with pytest.raises(NotImplementedError, match="顺逆"):
         DayunPolicy().calculate(chart())
+
+
+def test_liu_month_contexts_use_real_solar_terms():
+    contexts = liu_month_contexts(chart(), 2024)
+
+    assert len(contexts) == 12
+    assert contexts[0].month_index == 0
+    assert contexts[0].solar_term
+    assert contexts[0].start_jd < contexts[1].start_jd
+    assert contexts[0].chart_provider == "sxtwl"
+
+
+def test_liu_month_contexts_reject_invalid_year():
+    with pytest.raises(ValueError, match="year"):
+        liu_month_contexts(chart(), 0)
