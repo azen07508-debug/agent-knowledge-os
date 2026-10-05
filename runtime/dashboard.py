@@ -63,6 +63,7 @@ def collect(
     jobs: list[Any] = _safe(lambda: publish.list_jobs(), [])
     snapshots: list[Any] = _safe(lambda: analytics.recent(limit=limit), [])
     insights = _insight_notes(memory)
+    perf_insights = _safe(lambda: _perf_insights(analytics, contents), [])
 
     pages: dict[str, list[dict[str, Any]]] = {
         "Dashboard": _dashboard_sections(research_items, contents, jobs, snapshots,
@@ -73,7 +74,7 @@ def collect(
         "Calendar": [_calendar_section(jobs)],
         "Review": _review_sections(contents),
         "Publish": _publish_sections(publish, jobs),
-        "Analytics": _analytics_sections(analytics, snapshots),
+        "Analytics": _analytics_sections(analytics, snapshots, perf_insights),
         "Memory": _memory_sections(memory),
         "Accounts": _account_sections(jobs, contents),
         "Settings": [_settings_section(memory)],
@@ -109,6 +110,12 @@ def _store(kind: str) -> Any:
     from runtime.analytics_store import AnalyticsStore
 
     return AnalyticsStore(DATA_DIR / "analytics.sqlite3")
+
+
+def _perf_insights(analytics: Any, contents: list[dict]) -> list[Any]:
+    from runtime.performance_insights import build_insights
+
+    return build_insights(analytics, contents)
 
 
 def _safe(fn, default):
@@ -264,7 +271,8 @@ def _publish_log_rows(limit: int = 10) -> list[list[Any]]:
     return rows
 
 
-def _analytics_sections(analytics: Any, snapshots: list[Any]) -> list[dict[str, Any]]:
+def _analytics_sections(analytics: Any, snapshots: list[Any],
+                        insights: list[Any] | None = None) -> list[dict[str, Any]]:
     counts = _safe(lambda: analytics.counts(), {})
     summary = _section("采集概览", ["指标", "数量"],
                        [[key, value] for key, value in counts.items()])
@@ -273,7 +281,13 @@ def _analytics_sections(analytics: Any, snapshots: list[Any]) -> list[dict[str, 
             for snap in snapshots]
     detail = _section("最近采集快照", ["post", "类型", "平台", "互动", "互动率", "采集时间"], rows,
                       "互动率缺 views 时为 —（不算也不编）")
-    return [summary, detail]
+    perf_rows = [[insight.dimension, insight.key, insight.samples,
+                  f"{insight.avg_engagement_rate:.2%}" if insight.avg_engagement_rate is not None else "—",
+                  insight.status]
+                 for insight in (insights or [])]
+    perf = _section("表现洞察", ["维度", "分组", "样本", "平均互动率", "证据状态"], perf_rows,
+                    "PENDING=样本不足待积累，CANDIDATE=候选待 Memory Review；均不自动改 Strategy")
+    return [summary, detail, perf]
 
 
 def _insight_notes(memory: MemoryAPI) -> list[dict[str, Any]]:

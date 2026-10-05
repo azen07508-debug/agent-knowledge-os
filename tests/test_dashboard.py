@@ -118,6 +118,25 @@ def test_each_kind_of_data_reaches_its_page(tmp_path):
                               "snapshots": 1, "insights": 0}
 
 
+def test_analytics_page_shows_performance_insight_samples_and_status(tmp_path):
+    built = stores(tmp_path)
+    obj = ContentObject(topic="工具帖", hook="别再手抄 @liu", title_candidates=["3 个工具省时间"])
+    built["content_store"].save(obj)
+    built["analytics_store"].record(PostAnalytics(
+        post_id="t1", platform="x", content_id=obj.id, content_type="tool_post",
+        metrics={"likes": 10, "views": 100}, collected_at="2026-09-29 10:00:00"))
+
+    data = dashboard.collect(memory=MemoryAPI(vault_path=tmp_path / "vault"),
+                             research_store=built["research_store"],
+                             content_store=built["content_store"],
+                             publish_store=built["publish_store"],
+                             analytics_store=built["analytics_store"], limit=20)
+    page = dashboard.render(data)
+
+    assert "表现洞察" in page and "样本" in page
+    assert "PENDING" in page  # 单样本只标 PENDING，不冒充已验证
+
+
 def test_topics_page_runs_local_topic_engine(tmp_path):
     built = stores(tmp_path)
     built["research_store"].save(ResearchItem(
