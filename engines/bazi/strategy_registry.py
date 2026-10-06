@@ -14,6 +14,7 @@ from engines.bazi.strategies import (
     StrategyResult,
 )
 from engines.bazi.strength import ClassicalStrengthPolicy
+from engines.bazi.yongshen import ClassicalYongshenPolicy
 
 StrategyKey = tuple[str, str, str]
 
@@ -33,6 +34,7 @@ class StrategyRegistry:
             DayStemDayunPolicy(),
             LichunDayunPolicy(),
             ClassicalStrengthPolicy(),
+            ClassicalYongshenPolicy(),
         ):
             self.register(strategy)
         for strategy in strategies or ():

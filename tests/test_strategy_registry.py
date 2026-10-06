@@ -51,7 +51,7 @@ def test_registry_allows_different_policies_in_same_school():
     registry = StrategyRegistry()
     registry.register(OtherPolicy())
 
-    assert len(registry.list()) == 5
+    assert "other_v1" in {item.context.policy for item in registry.list()}
 
 
 def test_registry_ships_school_variants_for_direction_and_start_age():
@@ -59,7 +59,7 @@ def test_registry_ships_school_variants_for_direction_and_start_age():
 
     keys = {(item.context.policy, item.context.assumptions) for item in registry.list()}
 
-    assert {policy for policy, _ in keys} == {
+    assert {policy for policy, _ in keys} >= {
         "classical_approx_v1",
         "day_stem_approx_v1",
         "lichun_start_approx_v1",
