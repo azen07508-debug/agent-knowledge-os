@@ -29,6 +29,7 @@ class AnalyzeRequest(BirthRequest):
     school: str | None = None
     policy: str | None = None
     version: str | None = None
+    target_date: str | None = None
 
 
 service = MingLiService()
@@ -54,11 +55,16 @@ def analyze(request: AnalyzeRequest) -> dict[str, Any]:
     try:
         data = request.model_dump()
         response = service.analyze(
-            {key: value for key, value in data.items() if key not in {"question", "school", "policy", "version"}},
+            {
+                key: value
+                for key, value in data.items()
+                if key not in {"question", "school", "policy", "version", "target_date"}
+            },
             request.question,
             school=request.school,
             policy=request.policy,
             version=request.version,
+            target_date=request.target_date,
         )
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

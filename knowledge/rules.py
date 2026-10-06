@@ -13,6 +13,13 @@ VALID_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
 VALID_RULE_STATUSES = {"UNREVIEWED", "REVIEWED", "ACTIVE", "DEPRECATED"}
 
 
+def _fact_matches(value: Any, expected: Any) -> bool:
+    """同一事实键可能对应多个值（如四支存在多种关系），任一命中即满足。"""
+    if isinstance(value, (frozenset, set)):
+        return expected in value
+    return value == expected
+
+
 @dataclass(frozen=True)
 class Rule:
     id: str
@@ -107,7 +114,11 @@ class RuleRegistry:
                 rule.status == "UNREVIEWED" and not include_unreviewed
             ):
                 continue
-            matched = tuple(key for key, expected in rule.condition.items() if facts.get(key) == expected)
+            matched = tuple(
+                key
+                for key, expected in rule.condition.items()
+                if _fact_matches(facts.get(key), expected)
+            )
             missing = tuple(key for key in rule.condition if key not in matched)
             if not missing:
                 matches.append(RuleMatch(rule=rule, matched_conditions=matched))

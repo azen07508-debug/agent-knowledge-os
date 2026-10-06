@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
+from datetime import date
 from typing import Any
 
 from agents.mingli import AnalystAgent, CriticAgent
@@ -14,6 +15,7 @@ from agents.report import ReportGenerator
 from engines.bazi import BaziCalculator, BirthInput, SxtwlBaziProvider
 from engines.bazi.strategy_compare import compare_results
 from engines.bazi.strategy_registry import StrategyRegistry
+from engines.bazi.time_engine import LiuMonthContext, liu_month_at
 from knowledge.default_rules import default_registry
 from knowledge.evidence import build_evidence, extract_facts
 
@@ -43,6 +45,16 @@ class MingLiService:
         self.critic = CriticAgent(self.registry)
         self.report_generator = ReportGenerator()
 
+    @staticmethod
+    def _liu_month(chart, target_date: str | None) -> LiuMonthContext | None:
+        if target_date is None:
+            return None
+        try:
+            target = date.fromisoformat(target_date)
+        except ValueError as error:
+            raise ValueError("target_date 必须为 YYYY-MM-DD 格式。") from error
+        return liu_month_at(chart, target)
+
     def analyze(
         self,
         birth_data: dict[str, Any],
@@ -51,9 +63,11 @@ class MingLiService:
         school: str | None = None,
         policy: str | None = None,
         version: str | None = None,
+        target_date: str | None = None,
     ) -> AnalysisResponse:
         birth = BirthInput(**birth_data)
         chart = self.calculator.calculate_chart(birth)
+        liu_month = self._liu_month(chart, target_date)
         selector = (school, policy, version)
         if any(value is None for value in selector) and not all(
             value is None for value in selector
@@ -64,6 +78,7 @@ class MingLiService:
         if not question:
             raise ValueError("问题不能为空")
 
+        liu_month_meta = asdict(liu_month) if liu_month is not None else None
         if all(value is None for value in selector):
             return AnalysisResponse(
                 chart=chart.to_dict(),
@@ -72,11 +87,14 @@ class MingLiService:
                 metadata={
                     "strategy_selection": "required",
                     "message": "未执行策略；请显式选择 school、policy、version。当前无默认策略。",
-                    "facts": [fact.__dict__ for fact in extract_facts(chart)],
+                    "facts": [
+                        fact.__dict__ for fact in extract_facts(chart, liu_month)
+                    ],
+                    "liu_month": liu_month_meta,
                 },
             )
 
-        analysis = self.analyst.analyze(chart, question)
+        analysis = self.analyst.analyze(chart, question, liu_month)
 
         strategy = None
         conflict_report = None
@@ -89,12 +107,14 @@ class MingLiService:
             self.registry,
             topic=question,
             strategy_context=result.context,
+            liu_month=liu_month,
         )
         analysis = replace(analysis, evidence=evidence)
         strategy = asdict(result)
         metadata = {
             "strategy_selection": "explicit",
             "selector": {"school": school, "policy": policy, "version": version},
+            "liu_month": liu_month_meta,
         }
         critique = self.critic.critique(analysis)
         return AnalysisResponse(

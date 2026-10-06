@@ -1,11 +1,14 @@
 """Time Engine 的确定性流年测试。"""
 
+from datetime import date
+
 import pytest
 
 from engines.bazi import BirthInput, SxtwlBaziProvider
 from engines.bazi.sxtwl_provider import solar_term_jds
 from engines.bazi.time_engine import (
     DayunPolicy,
+    liu_month_at,
     liu_month_contexts,
     sexagenary_year,
     year_contexts,
@@ -60,3 +63,14 @@ def test_solar_term_jds_are_chronological_and_deduplicated():
     assert len(terms) == 49
     assert [jd for jd, _ in terms] == sorted(jd for jd, _ in terms)
     assert len({jd for jd, _ in terms}) == len(terms)
+
+
+def test_liu_month_at_resolves_target_date_to_solar_term_period():
+    assert liu_month_at(chart(), date(2024, 12, 15)).solar_term == "大雪"
+    assert liu_month_at(chart(), date(2024, 12, 15)).earthly_branch == "子"
+    assert liu_month_at(chart(), date(2024, 5, 10)).solar_term == "立夏"
+
+
+def test_liu_month_at_uses_previous_year_period_before_lichun():
+    assert liu_month_at(chart(), date(2026, 1, 2)).solar_term == "大雪"
+    assert liu_month_at(chart(), date(2026, 2, 5)).solar_term == "立春"

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
+
+import sxtwl
 
 from engines.bazi.models import Chart
 from engines.bazi.strategies import (
@@ -25,6 +28,7 @@ __all__ = [
     "LiuMonthContext",
     "StrategyRegistry",
     "YearContext",
+    "liu_month_at",
     "liu_month_contexts",
     "sexagenary_year",
     "year_context",
@@ -75,6 +79,20 @@ def liu_month_contexts(chart: Chart, year: int) -> tuple[LiuMonthContext, ...]:
             year, month_index, stem, branch, term_name, terms[term_index], chart.provider
         ))
     return tuple(result)
+
+
+def liu_month_at(chart: Chart, target: date) -> LiuMonthContext:
+    """返回 target 落在的流月周期；边界由真实节气 JD 决定，正午为日内基准。"""
+    if target.year < 2:
+        raise ValueError("target 年份过小，无法回溯节气。")
+    target_jd = sxtwl.toJD(sxtwl.Time(target.year, target.month, target.day, 12, 0, 0))
+    candidates = liu_month_contexts(chart, target.year - 1) + liu_month_contexts(
+        chart, target.year
+    )
+    return max(
+        (item for item in candidates if item.start_jd <= target_jd),
+        key=lambda item: item.start_jd,
+    )
 
 
 class DayunPolicy:

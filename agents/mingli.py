@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from engines.bazi.models import Chart
 from knowledge.evidence import Evidence, build_evidence
 from knowledge.rules import RuleRegistry
+
+if TYPE_CHECKING:
+    from engines.bazi.time_engine import LiuMonthContext
 
 
 @dataclass(frozen=True)
@@ -29,10 +33,15 @@ class AnalystAgent:
     def __init__(self, registry: RuleRegistry) -> None:
         self.registry = registry
 
-    def analyze(self, chart: Chart, question: str) -> Analysis:
+    def analyze(
+        self,
+        chart: Chart,
+        question: str,
+        liu_month: LiuMonthContext | None = None,
+    ) -> Analysis:
         if not question.strip():
             raise ValueError("问题不能为空。")
-        evidence = build_evidence(chart, self.registry, topic=question)
+        evidence = build_evidence(chart, self.registry, topic=question, liu_month=liu_month)
         if not evidence.matches:
             conclusion = "当前规则库没有匹配到足够结构证据，不能形成可靠结论。"
         else:
