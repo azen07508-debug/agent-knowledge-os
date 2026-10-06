@@ -1,0 +1,1317 @@
+[
+ {
+  "id": "ren",
+  "solar": [
+   1944,
+   10,
+   25
+  ],
+  "time_index": 3,
+  "gender": "男",
+  "five_element_class": "土五局",
+  "soul_branch": "未",
+  "body_branch": "丑",
+  "mutagens": {
+   "廉贞": "禄",
+   "武曲": "科",
+   "太阳": "忌",
+   "破军": "权"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "疾厄",
+    "stem": "丙",
+    "branch": "寅",
+    "major": [
+     "紫微",
+     "天府"
+    ],
+    "minor": [
+     "右弼",
+     "禄存",
+     "天马",
+     "地劫"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "财帛",
+    "stem": "丁",
+    "branch": "卯",
+    "major": [
+     "太阴"
+    ],
+    "minor": [
+     "擎羊"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "子女",
+    "stem": "戊",
+    "branch": "辰",
+    "major": [
+     "贪狼"
+    ],
+    "minor": []
+   },
+   {
+    "index": 3,
+    "name": "夫妻",
+    "stem": "己",
+    "branch": "巳",
+    "major": [
+     "巨门"
+    ],
+    "minor": [
+     "火星"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "兄弟",
+    "stem": "庚",
+    "branch": "午",
+    "major": [
+     "廉贞",
+     "天相"
+    ],
+    "minor": []
+   },
+   {
+    "index": 5,
+    "name": "命宫",
+    "stem": "辛",
+    "branch": "未",
+    "major": [
+     "天梁"
+    ],
+    "minor": [
+     "文昌",
+     "文曲",
+     "天钺"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "父母",
+    "stem": "壬",
+    "branch": "申",
+    "major": [
+     "七杀"
+    ],
+    "minor": [
+     "地空"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "福德",
+    "stem": "癸",
+    "branch": "酉",
+    "major": [
+     "天同"
+    ],
+    "minor": []
+   },
+   {
+    "index": 8,
+    "name": "田宅",
+    "stem": "甲",
+    "branch": "戌",
+    "major": [
+     "武曲"
+    ],
+    "minor": []
+   },
+   {
+    "index": 9,
+    "name": "官禄",
+    "stem": "乙",
+    "branch": "亥",
+    "major": [
+     "太阳"
+    ],
+    "minor": []
+   },
+   {
+    "index": 10,
+    "name": "仆役",
+    "stem": "丙",
+    "branch": "子",
+    "major": [
+     "破军"
+    ],
+    "minor": [
+     "左辅"
+    ]
+   },
+   {
+    "index": 11,
+    "name": "迁移",
+    "stem": "丁",
+    "branch": "丑",
+    "major": [
+     "天机"
+    ],
+    "minor": [
+     "天魁",
+     "铃星",
+     "陀罗"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "lin",
+  "solar": [
+   1974,
+   11,
+   29
+  ],
+  "time_index": 5,
+  "gender": "女",
+  "five_element_class": "土五局",
+  "soul_branch": "午",
+  "body_branch": "辰",
+  "mutagens": {
+   "武曲": "科",
+   "破军": "权",
+   "太阳": "忌",
+   "廉贞": "禄"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "财帛",
+    "stem": "丙",
+    "branch": "寅",
+    "major": [],
+    "minor": [
+     "禄存"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "子女",
+    "stem": "丁",
+    "branch": "卯",
+    "major": [],
+    "minor": [
+     "擎羊"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "夫妻",
+    "stem": "戊",
+    "branch": "辰",
+    "major": [
+     "天同"
+    ],
+    "minor": [
+     "地劫"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "兄弟",
+    "stem": "己",
+    "branch": "巳",
+    "major": [
+     "武曲",
+     "破军"
+    ],
+    "minor": [
+     "文昌"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "命宫",
+    "stem": "庚",
+    "branch": "午",
+    "major": [
+     "太阳"
+    ],
+    "minor": [
+     "地空",
+     "火星"
+    ]
+   },
+   {
+    "index": 5,
+    "name": "父母",
+    "stem": "辛",
+    "branch": "未",
+    "major": [
+     "天府"
+    ],
+    "minor": [
+     "天钺"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "福德",
+    "stem": "壬",
+    "branch": "申",
+    "major": [
+     "天机",
+     "太阴"
+    ],
+    "minor": [
+     "天马",
+     "铃星"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "田宅",
+    "stem": "癸",
+    "branch": "酉",
+    "major": [
+     "紫微",
+     "贪狼"
+    ],
+    "minor": [
+     "文曲"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "官禄",
+    "stem": "甲",
+    "branch": "戌",
+    "major": [
+     "巨门"
+    ],
+    "minor": []
+   },
+   {
+    "index": 9,
+    "name": "仆役",
+    "stem": "乙",
+    "branch": "亥",
+    "major": [
+     "天相"
+    ],
+    "minor": []
+   },
+   {
+    "index": 10,
+    "name": "迁移",
+    "stem": "丙",
+    "branch": "子",
+    "major": [
+     "天梁"
+    ],
+    "minor": []
+   },
+   {
+    "index": 11,
+    "name": "疾厄",
+    "stem": "丁",
+    "branch": "丑",
+    "major": [
+     "廉贞",
+     "七杀"
+    ],
+    "minor": [
+     "左辅",
+     "右弼",
+     "天魁",
+     "陀罗"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "jobs",
+  "solar": [
+   1955,
+   2,
+   24
+  ],
+  "time_index": 6,
+  "gender": "男",
+  "five_element_class": "水二局",
+  "soul_branch": "酉",
+  "body_branch": "酉",
+  "mutagens": {
+   "紫微": "科",
+   "太阴": "忌",
+   "天梁": "权",
+   "天机": "禄"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "仆役",
+    "stem": "戊",
+    "branch": "寅",
+    "major": [
+     "紫微",
+     "天府"
+    ],
+    "minor": [
+     "陀罗"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "迁移",
+    "stem": "己",
+    "branch": "卯",
+    "major": [
+     "太阴"
+    ],
+    "minor": [
+     "禄存",
+     "火星"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "疾厄",
+    "stem": "庚",
+    "branch": "辰",
+    "major": [
+     "贪狼"
+    ],
+    "minor": [
+     "文昌",
+     "铃星",
+     "擎羊"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "财帛",
+    "stem": "辛",
+    "branch": "巳",
+    "major": [
+     "巨门"
+    ],
+    "minor": [
+     "左辅",
+     "天马",
+     "地空",
+     "地劫"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "子女",
+    "stem": "壬",
+    "branch": "午",
+    "major": [
+     "廉贞",
+     "天相"
+    ],
+    "minor": []
+   },
+   {
+    "index": 5,
+    "name": "夫妻",
+    "stem": "癸",
+    "branch": "未",
+    "major": [
+     "天梁"
+    ],
+    "minor": []
+   },
+   {
+    "index": 6,
+    "name": "兄弟",
+    "stem": "甲",
+    "branch": "申",
+    "major": [
+     "七杀"
+    ],
+    "minor": [
+     "天钺"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "命宫",
+    "stem": "乙",
+    "branch": "酉",
+    "major": [
+     "天同"
+    ],
+    "minor": [
+     "右弼"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "父母",
+    "stem": "丙",
+    "branch": "戌",
+    "major": [
+     "武曲"
+    ],
+    "minor": [
+     "文曲"
+    ]
+   },
+   {
+    "index": 9,
+    "name": "福德",
+    "stem": "丁",
+    "branch": "亥",
+    "major": [
+     "太阳"
+    ],
+    "minor": []
+   },
+   {
+    "index": 10,
+    "name": "田宅",
+    "stem": "戊",
+    "branch": "子",
+    "major": [
+     "破军"
+    ],
+    "minor": [
+     "天魁"
+    ]
+   },
+   {
+    "index": 11,
+    "name": "官禄",
+    "stem": "己",
+    "branch": "丑",
+    "major": [
+     "天机"
+    ],
+    "minor": []
+   }
+  ]
+ },
+ {
+  "id": "yao",
+  "solar": [
+   1980,
+   9,
+   12
+  ],
+  "time_index": 5,
+  "gender": "男",
+  "five_element_class": "金四局",
+  "soul_branch": "辰",
+  "body_branch": "寅",
+  "mutagens": {
+   "太阴": "科",
+   "天同": "忌",
+   "武曲": "权",
+   "太阳": "禄"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "夫妻",
+    "stem": "戊",
+    "branch": "寅",
+    "major": [
+     "紫微",
+     "天府"
+    ],
+    "minor": [
+     "天马"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "兄弟",
+    "stem": "己",
+    "branch": "卯",
+    "major": [
+     "太阴"
+    ],
+    "minor": [
+     "右弼",
+     "铃星"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "命宫",
+    "stem": "庚",
+    "branch": "辰",
+    "major": [
+     "贪狼"
+    ],
+    "minor": [
+     "地劫"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "父母",
+    "stem": "辛",
+    "branch": "巳",
+    "major": [
+     "巨门"
+    ],
+    "minor": [
+     "文昌"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "福德",
+    "stem": "壬",
+    "branch": "午",
+    "major": [
+     "廉贞",
+     "天相"
+    ],
+    "minor": [
+     "地空"
+    ]
+   },
+   {
+    "index": 5,
+    "name": "田宅",
+    "stem": "癸",
+    "branch": "未",
+    "major": [
+     "天梁"
+    ],
+    "minor": [
+     "天钺",
+     "火星",
+     "陀罗"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "官禄",
+    "stem": "甲",
+    "branch": "申",
+    "major": [
+     "七杀"
+    ],
+    "minor": [
+     "禄存"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "仆役",
+    "stem": "乙",
+    "branch": "酉",
+    "major": [
+     "天同"
+    ],
+    "minor": [
+     "文曲",
+     "擎羊"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "迁移",
+    "stem": "丙",
+    "branch": "戌",
+    "major": [
+     "武曲"
+    ],
+    "minor": []
+   },
+   {
+    "index": 9,
+    "name": "疾厄",
+    "stem": "丁",
+    "branch": "亥",
+    "major": [
+     "太阳"
+    ],
+    "minor": [
+     "左辅"
+    ]
+   },
+   {
+    "index": 10,
+    "name": "财帛",
+    "stem": "戊",
+    "branch": "子",
+    "major": [
+     "破军"
+    ],
+    "minor": []
+   },
+   {
+    "index": 11,
+    "name": "子女",
+    "stem": "己",
+    "branch": "丑",
+    "major": [
+     "天机"
+    ],
+    "minor": [
+     "天魁"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "musk",
+  "solar": [
+   1971,
+   6,
+   28
+  ],
+  "time_index": 4,
+  "gender": "男",
+  "five_element_class": "木三局",
+  "soul_branch": "寅",
+  "body_branch": "戌",
+  "mutagens": {
+   "巨门": "禄",
+   "文昌": "忌",
+   "文曲": "科",
+   "太阳": "权"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "命宫",
+    "stem": "庚",
+    "branch": "寅",
+    "major": [
+     "天机",
+     "太阴"
+    ],
+    "minor": [
+     "天钺",
+     "铃星"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "父母",
+    "stem": "辛",
+    "branch": "卯",
+    "major": [
+     "紫微",
+     "贪狼"
+    ],
+    "minor": [
+     "地劫"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "福德",
+    "stem": "壬",
+    "branch": "辰",
+    "major": [
+     "巨门"
+    ],
+    "minor": []
+   },
+   {
+    "index": 3,
+    "name": "田宅",
+    "stem": "癸",
+    "branch": "巳",
+    "major": [
+     "天相"
+    ],
+    "minor": [
+     "天马"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "官禄",
+    "stem": "甲",
+    "branch": "午",
+    "major": [
+     "天梁"
+    ],
+    "minor": [
+     "右弼",
+     "文昌",
+     "天魁"
+    ]
+   },
+   {
+    "index": 5,
+    "name": "仆役",
+    "stem": "乙",
+    "branch": "未",
+    "major": [
+     "廉贞",
+     "七杀"
+    ],
+    "minor": [
+     "地空"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "迁移",
+    "stem": "丙",
+    "branch": "申",
+    "major": [],
+    "minor": [
+     "左辅",
+     "文曲",
+     "陀罗"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "疾厄",
+    "stem": "丁",
+    "branch": "酉",
+    "major": [],
+    "minor": [
+     "禄存"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "财帛",
+    "stem": "戊",
+    "branch": "戌",
+    "major": [
+     "天同"
+    ],
+    "minor": [
+     "擎羊"
+    ]
+   },
+   {
+    "index": 9,
+    "name": "子女",
+    "stem": "己",
+    "branch": "亥",
+    "major": [
+     "武曲",
+     "破军"
+    ],
+    "minor": []
+   },
+   {
+    "index": 10,
+    "name": "夫妻",
+    "stem": "庚",
+    "branch": "子",
+    "major": [
+     "太阳"
+    ],
+    "minor": []
+   },
+   {
+    "index": 11,
+    "name": "兄弟",
+    "stem": "辛",
+    "branch": "丑",
+    "major": [
+     "天府"
+    ],
+    "minor": [
+     "火星"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "leap-after-15",
+  "solar": [
+   1998,
+   7,
+   10
+  ],
+  "time_index": 10,
+  "gender": "男",
+  "five_element_class": "木三局",
+  "soul_branch": "酉",
+  "body_branch": "巳",
+  "mutagens": {
+   "天机": "忌",
+   "右弼": "科",
+   "太阴": "权",
+   "贪狼": "禄"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "仆役",
+    "stem": "甲",
+    "branch": "寅",
+    "major": [
+     "武曲",
+     "天相"
+    ],
+    "minor": [
+     "文曲"
+    ]
+   },
+   {
+    "index": 1,
+    "name": "迁移",
+    "stem": "乙",
+    "branch": "卯",
+    "major": [
+     "太阳",
+     "天梁"
+    ],
+    "minor": []
+   },
+   {
+    "index": 2,
+    "name": "疾厄",
+    "stem": "丙",
+    "branch": "辰",
+    "major": [
+     "七杀"
+    ],
+    "minor": [
+     "陀罗"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "财帛",
+    "stem": "丁",
+    "branch": "巳",
+    "major": [
+     "天机"
+    ],
+    "minor": [
+     "右弼",
+     "禄存"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "子女",
+    "stem": "戊",
+    "branch": "午",
+    "major": [
+     "紫微"
+    ],
+    "minor": [
+     "擎羊"
+    ]
+   },
+   {
+    "index": 5,
+    "name": "夫妻",
+    "stem": "己",
+    "branch": "未",
+    "major": [],
+    "minor": [
+     "天钺"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "兄弟",
+    "stem": "庚",
+    "branch": "申",
+    "major": [
+     "破军"
+    ],
+    "minor": [
+     "天马"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "命宫",
+    "stem": "辛",
+    "branch": "酉",
+    "major": [],
+    "minor": [
+     "左辅",
+     "地劫"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "父母",
+    "stem": "壬",
+    "branch": "戌",
+    "major": [
+     "廉贞",
+     "天府"
+    ],
+    "minor": []
+   },
+   {
+    "index": 9,
+    "name": "福德",
+    "stem": "癸",
+    "branch": "亥",
+    "major": [
+     "太阴"
+    ],
+    "minor": [
+     "火星"
+    ]
+   },
+   {
+    "index": 10,
+    "name": "田宅",
+    "stem": "甲",
+    "branch": "子",
+    "major": [
+     "贪狼"
+    ],
+    "minor": [
+     "文昌"
+    ]
+   },
+   {
+    "index": 11,
+    "name": "官禄",
+    "stem": "乙",
+    "branch": "丑",
+    "major": [
+     "天同",
+     "巨门"
+    ],
+    "minor": [
+     "天魁",
+     "地空",
+     "铃星"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "late-zi",
+  "solar": [
+   1990,
+   6,
+   15
+  ],
+  "time_index": 12,
+  "gender": "男",
+  "five_element_class": "木三局",
+  "soul_branch": "午",
+  "body_branch": "午",
+  "mutagens": {
+   "天同": "忌",
+   "武曲": "权",
+   "太阳": "禄",
+   "太阴": "科"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "财帛",
+    "stem": "戊",
+    "branch": "寅",
+    "major": [],
+    "minor": []
+   },
+   {
+    "index": 1,
+    "name": "子女",
+    "stem": "己",
+    "branch": "卯",
+    "major": [],
+    "minor": [
+     "铃星"
+    ]
+   },
+   {
+    "index": 2,
+    "name": "夫妻",
+    "stem": "庚",
+    "branch": "辰",
+    "major": [
+     "天同"
+    ],
+    "minor": [
+     "文曲"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "兄弟",
+    "stem": "辛",
+    "branch": "巳",
+    "major": [
+     "武曲",
+     "破军"
+    ],
+    "minor": []
+   },
+   {
+    "index": 4,
+    "name": "命宫",
+    "stem": "壬",
+    "branch": "午",
+    "major": [
+     "太阳"
+    ],
+    "minor": [
+     "右弼"
+    ]
+   },
+   {
+    "index": 5,
+    "name": "父母",
+    "stem": "癸",
+    "branch": "未",
+    "major": [
+     "天府"
+    ],
+    "minor": [
+     "天钺",
+     "陀罗"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "福德",
+    "stem": "甲",
+    "branch": "申",
+    "major": [
+     "天机",
+     "太阴"
+    ],
+    "minor": [
+     "左辅",
+     "禄存",
+     "天马"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "田宅",
+    "stem": "乙",
+    "branch": "酉",
+    "major": [
+     "紫微",
+     "贪狼"
+    ],
+    "minor": [
+     "擎羊"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "官禄",
+    "stem": "丙",
+    "branch": "戌",
+    "major": [
+     "巨门"
+    ],
+    "minor": [
+     "文昌"
+    ]
+   },
+   {
+    "index": 9,
+    "name": "仆役",
+    "stem": "丁",
+    "branch": "亥",
+    "major": [
+     "天相"
+    ],
+    "minor": [
+     "地空",
+     "地劫"
+    ]
+   },
+   {
+    "index": 10,
+    "name": "迁移",
+    "stem": "戊",
+    "branch": "子",
+    "major": [
+     "天梁"
+    ],
+    "minor": []
+   },
+   {
+    "index": 11,
+    "name": "疾厄",
+    "stem": "己",
+    "branch": "丑",
+    "major": [
+     "廉贞",
+     "七杀"
+    ],
+    "minor": [
+     "天魁",
+     "火星"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "plain",
+  "solar": [
+   1990,
+   2,
+   1
+  ],
+  "time_index": 6,
+  "gender": "女",
+  "five_element_class": "水二局",
+  "soul_branch": "申",
+  "body_branch": "申",
+  "mutagens": {
+   "天同": "忌",
+   "武曲": "权",
+   "太阳": "禄",
+   "太阴": "科"
+  },
+  "palaces": [
+   {
+    "index": 0,
+    "name": "迁移",
+    "stem": "戊",
+    "branch": "寅",
+    "major": [
+     "贪狼"
+    ],
+    "minor": []
+   },
+   {
+    "index": 1,
+    "name": "疾厄",
+    "stem": "己",
+    "branch": "卯",
+    "major": [
+     "天机",
+     "巨门"
+    ],
+    "minor": []
+   },
+   {
+    "index": 2,
+    "name": "财帛",
+    "stem": "庚",
+    "branch": "辰",
+    "major": [
+     "紫微",
+     "天相"
+    ],
+    "minor": [
+     "左辅",
+     "文昌"
+    ]
+   },
+   {
+    "index": 3,
+    "name": "子女",
+    "stem": "辛",
+    "branch": "巳",
+    "major": [
+     "天梁"
+    ],
+    "minor": [
+     "地空",
+     "地劫"
+    ]
+   },
+   {
+    "index": 4,
+    "name": "夫妻",
+    "stem": "壬",
+    "branch": "午",
+    "major": [
+     "七杀"
+    ],
+    "minor": []
+   },
+   {
+    "index": 5,
+    "name": "兄弟",
+    "stem": "癸",
+    "branch": "未",
+    "major": [],
+    "minor": [
+     "天钺",
+     "火星",
+     "陀罗"
+    ]
+   },
+   {
+    "index": 6,
+    "name": "命宫",
+    "stem": "甲",
+    "branch": "申",
+    "major": [
+     "廉贞"
+    ],
+    "minor": [
+     "禄存",
+     "天马"
+    ]
+   },
+   {
+    "index": 7,
+    "name": "父母",
+    "stem": "乙",
+    "branch": "酉",
+    "major": [],
+    "minor": [
+     "铃星",
+     "擎羊"
+    ]
+   },
+   {
+    "index": 8,
+    "name": "福德",
+    "stem": "丙",
+    "branch": "戌",
+    "major": [
+     "破军"
+    ],
+    "minor": [
+     "右弼",
+     "文曲"
+    ]
+   },
+   {
+    "index": 9,
+    "name": "田宅",
+    "stem": "丁",
+    "branch": "亥",
+    "major": [
+     "天同"
+    ],
+    "minor": []
+   },
+   {
+    "index": 10,
+    "name": "官禄",
+    "stem": "戊",
+    "branch": "子",
+    "major": [
+     "武曲",
+     "天府"
+    ],
+    "minor": []
+   },
+   {
+    "index": 11,
+    "name": "仆役",
+    "stem": "己",
+    "branch": "丑",
+    "major": [
+     "太阳",
+     "太阴"
+    ],
+    "minor": [
+     "天魁"
+    ]
+   }
+  ]
+ }
+]

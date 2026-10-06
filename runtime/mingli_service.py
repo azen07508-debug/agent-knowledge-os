@@ -17,6 +17,7 @@ from engines.bazi.event_window import event_windows
 from engines.bazi.strategy_compare import compare_results
 from engines.bazi.strategy_registry import StrategyRegistry
 from engines.bazi.time_engine import LiuMonthContext, liu_month_at
+from engines.ziwei import ZiweiCalculator
 from knowledge.default_rules import default_registry
 from knowledge.evidence import build_evidence, extract_facts
 
@@ -40,6 +41,7 @@ class MingLiService:
 
     def __init__(self, registry=None) -> None:
         self.calculator = BaziCalculator(SxtwlBaziProvider())
+        self.ziwei_calculator = ZiweiCalculator()
         self.registry = registry or default_registry()
         self.strategy_registry = StrategyRegistry()
         self.analyst = AnalystAgent(self.registry)
@@ -66,6 +68,11 @@ class MingLiService:
             "relation": relation,
             "windows": [asdict(window) for window in found],
         }
+
+    def ziwei(self, birth_data: dict[str, Any], *, leap_month: str = "split") -> dict[str, Any]:
+        """紫微斗数本命盘；只给结构事实，不判吉凶，也不排大限流年。"""
+        chart = self.ziwei_calculator.calculate(birth_data, leap_month=leap_month)
+        return {"chart": chart.to_dict()}
 
     def analyze(
         self,

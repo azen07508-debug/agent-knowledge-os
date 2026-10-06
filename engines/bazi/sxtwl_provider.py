@@ -103,7 +103,7 @@ def _gz_text(gz: object) -> tuple[str, str]:
     return STEMS[stem_index], BRANCHES[branch_index]
 
 
-def _na_yin(stem: str, branch: str) -> str:
+def na_yin(stem: str, branch: str) -> str:
     """按六十甲子序号返回纳音；甲子起点为海中金。"""
     stem_index = STEMS.index(stem)
     branch_index = BRANCHES.index(branch)
@@ -200,7 +200,7 @@ class SxtwlBaziProvider:
                 earthly_branch=branch,
                 hidden_stems=HIDDEN_STEMS[branch],
                 ten_god=ten_god(day_stem, stem, is_day_pillar=name == "day"),
-                na_yin=_na_yin(stem, branch),
+                na_yin=na_yin(stem, branch),
             )
             for name, stem, branch in values
         )

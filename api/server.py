@@ -37,6 +37,10 @@ class WindowsRequest(BirthRequest):
     relation: str = "六冲"
 
 
+class ZiweiRequest(BirthRequest):
+    leap_month: str = "split"
+
+
 service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
@@ -63,6 +67,18 @@ def windows(request: WindowsRequest) -> dict[str, Any]:
             {key: value for key, value in data.items() if key not in {"target_year", "relation"}},
             request.target_year,
             request.relation,
+        )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/ziwei")
+def ziwei(request: ZiweiRequest) -> dict[str, Any]:
+    data = request.model_dump()
+    try:
+        return service.ziwei(
+            {key: value for key, value in data.items() if key != "leap_month"},
+            leap_month=request.leap_month,
         )
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
