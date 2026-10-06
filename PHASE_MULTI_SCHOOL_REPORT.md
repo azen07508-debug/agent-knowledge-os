@@ -84,4 +84,12 @@
 - **旺衰与用神**：`ClassicalStrengthPolicy`（`approximate=True`，confidence 0.4）、`ClassicalYongshenPolicy`（扶抑法，中和命局候选留空不猜）。
 - **外部 benchmark**：`evaluation/external.py`、`scripts/run_external_benchmarks.py`。实测 fate-bench 295 条中 289 条可复算，289/289 通过（四柱/日主/十神/纳音/藏干十神，藏干按集合比对）；其中 106 例差异仅为巳藏干书写顺序（丙戊庚 / 丙庚戊），单独计数不计失败；大运顺逆按年干规则 289/289，按日干规则 145/289。mingli-bench 160/160 可排盘。问答类指标恒为 `None` 并写明原因（本系统无 LLM 作答器）。
 - **紫微斗数**：`engines/ziwei/` 与 `POST /api/ziwei`，排十二宫干支、五行局、十四主星、六吉六煞、禄存天马与生年四化；闰月归属（split/preceding/following）与晚子时起日以策略参数显式声明。整盘与参考实现 iztro v2.6.1 的 8 组对照向量一致，夹具固化在 `tests/fixtures/ziwei_reference.json`。不含大限、流年、星曜亮度与其余杂曜。
-- **验证**：全量 pytest **642 passed**；`ruff check .` 通过；`git diff --check` 干净。
+- **Web 控制台**：`GET /` 提供单页 `web/index.html`（纯静态，无前端构建链），可排八字、跑分析、排紫微、查事件窗口；已在真实浏览器中点通健康检查与排盘。
+- **MCP**：`runtime/mcp_server.py` 提供 stdio 服务，暴露 `pa_chart` / `analyze` / `ziwei_chart` / `event_windows` 四个工具。按 ponytail 只实现握手、`tools/list`、`tools/call`、`ping` 的最小子集，不引入 MCP SDK。
+- **用户记忆**：`runtime/user_memory.py` 与 `PUT/GET /api/memory/{user_id}`、`POST /api/memory/{user_id}/analyze`。出生档案与策略偏好存本地 `data/user_memory.json`（`data/` 已 git 忽略），咨询历史只留结论与 provenance，命盘可随时重算；历史写入时裁到 50 条。
+- **生产化**：可选 `MINGLI_API_KEY` 鉴权（请求带 `X-API-Key`，健康检查与静态页免鉴权，密钥用 `hmac.compare_digest` 比对）；`scripts/run_api.sh` 启动脚本；`fastapi`、`uvicorn` 补进 `pyproject.toml` 与 `requirements.txt`。已在真实进程上验证：无 key 401、正确 key 200、错误 key 401。
+- **验证**：全量 pytest **661 passed**；`ruff check .` 通过；`git diff --check` 干净。
+
+### 生产化未覆盖
+
+容器镜像、限流与指标采集未实现：仓库没有部署目标，且 `everos`、`arbiter-lite` 无法在本机验证能否从公共源安装，因此不作已完成声明。用户记忆是单进程 JSON 文件，多 worker 会互相覆盖写入，启动脚本默认 `workers=1`；需要并发写入时应先换存储后端。
