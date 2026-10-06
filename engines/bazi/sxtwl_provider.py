@@ -79,7 +79,7 @@ def solar_term_jds(*years: int) -> tuple[tuple[int, float], ...]:
     return tuple(sorted((jd, index) for jd, index in events.items()))
 
 
-def _ten_god(day_master: str, stem: str, *, is_day_pillar: bool = False) -> str:
+def ten_god(day_master: str, stem: str, *, is_day_pillar: bool = False) -> str:
     """按日主五行、生克和阴阳计算天干十神。"""
     if is_day_pillar:
         return "日主"
@@ -199,7 +199,7 @@ class SxtwlBaziProvider:
                 heavenly_stem=stem,
                 earthly_branch=branch,
                 hidden_stems=HIDDEN_STEMS[branch],
-                ten_god=_ten_god(day_stem, stem, is_day_pillar=name == "day"),
+                ten_god=ten_god(day_stem, stem, is_day_pillar=name == "day"),
                 na_yin=_na_yin(stem, branch),
             )
             for name, stem, branch in values
