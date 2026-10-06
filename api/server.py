@@ -43,6 +43,19 @@ class ZiweiRequest(BirthRequest):
     leap_month: str = "split"
 
 
+class MemoryProfileRequest(BirthRequest):
+    school: str | None = None
+    policy: str | None = None
+    version: str | None = None
+
+
+class MemoryAnalyzeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1)
+    target_date: str | None = None
+
+
 service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
@@ -92,6 +105,37 @@ def ziwei(request: ZiweiRequest) -> dict[str, Any]:
         )
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.put("/api/memory/{user_id}")
+def save_memory_profile(user_id: str, request: MemoryProfileRequest) -> dict[str, Any]:
+    data = request.model_dump()
+    selector = {key: data.pop(key) for key in ("school", "policy", "version")}
+    try:
+        return {"profile": service.save_profile(user_id, data, **selector)}
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/memory/{user_id}")
+def get_memory(user_id: str) -> dict[str, Any]:
+    recalled = service.recall(user_id)
+    if recalled is None:
+        raise HTTPException(status_code=404, detail=f"没有 {user_id} 的用户记忆")
+    return recalled
+
+
+@app.post("/api/memory/{user_id}/analyze")
+def analyze_from_memory(user_id: str, request: MemoryAnalyzeRequest) -> dict[str, Any]:
+    if service.memory.profile(user_id) is None:
+        raise HTTPException(status_code=404, detail=f"没有 {user_id} 的用户记忆")
+    try:
+        response = service.analyze_from_memory(
+            user_id, request.question, target_date=request.target_date
+        )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return response.to_dict()
 
 
 @app.post("/api/analyze")

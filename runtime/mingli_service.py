@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from agents.mingli import AnalystAgent, CriticAgent
@@ -20,6 +20,7 @@ from engines.bazi.time_engine import LiuMonthContext, liu_month_at
 from engines.ziwei import ZiweiCalculator
 from knowledge.default_rules import default_registry
 from knowledge.evidence import build_evidence, extract_facts
+from runtime.user_memory import UserMemory
 
 
 @dataclass(frozen=True)
@@ -39,9 +40,10 @@ class AnalysisResponse:
 class MingLiService:
     """本地命理服务；所有输出都保留 provider、规则和证据来源。"""
 
-    def __init__(self, registry=None) -> None:
+    def __init__(self, registry=None, memory: UserMemory | None = None) -> None:
         self.calculator = BaziCalculator(SxtwlBaziProvider())
         self.ziwei_calculator = ZiweiCalculator()
+        self.memory = memory or UserMemory()
         self.registry = registry or default_registry()
         self.strategy_registry = StrategyRegistry()
         self.analyst = AnalystAgent(self.registry)
@@ -57,6 +59,15 @@ class MingLiService:
         except ValueError as error:
             raise ValueError("target_date 必须为 YYYY-MM-DD 格式。") from error
         return liu_month_at(chart, target)
+
+    @staticmethod
+    def _validate_selector(school: str | None, policy: str | None, version: str | None) -> None:
+        """school、policy、version 必须同给或同缺，且不得是空白。"""
+        selector = (school, policy, version)
+        if any(value is None for value in selector) and not all(value is None for value in selector):
+            raise ValueError("school、policy、version 必须同时提供，且不能为空或空白。")
+        if any(value is not None and not value.strip() for value in selector):
+            raise ValueError("school、policy、version 不能为空或空白。")
 
     def windows(
         self, birth_data: dict[str, Any], target_year: int, relation: str = "六冲"
@@ -74,6 +85,57 @@ class MingLiService:
         chart = self.ziwei_calculator.calculate(birth_data, leap_month=leap_month)
         return {"chart": chart.to_dict()}
 
+    def save_profile(
+        self,
+        user_id: str,
+        birth_data: dict[str, Any],
+        *,
+        school: str | None = None,
+        policy: str | None = None,
+        version: str | None = None,
+    ) -> dict[str, Any]:
+        """保存出生档案与策略偏好；出生信息先过 BirthInput 校验。"""
+        BirthInput(**birth_data)
+        self._validate_selector(school, policy, version)
+        profile = {"birth": birth_data, "school": school, "policy": policy, "version": version}
+        return self.memory.save_profile(user_id, profile)
+
+    def recall(self, user_id: str) -> dict[str, Any] | None:
+        """返回出生档案与咨询历史；用户不存在时返回 None。"""
+        profile = self.memory.profile(user_id)
+        if profile is None:
+            return None
+        return {"user_id": user_id, "profile": profile, "history": self.memory.history(user_id)}
+
+    def analyze_from_memory(
+        self, user_id: str, question: str, *, target_date: str | None = None
+    ) -> AnalysisResponse:
+        """用已保存的出生档案直接分析，不必再传一次出生信息。"""
+        profile = self.memory.profile(user_id)
+        if profile is None:
+            raise ValueError(f"没有找到 {user_id} 的用户记忆，请先保存出生档案。")
+        response = self.analyze(
+            profile["birth"],
+            question,
+            school=profile.get("school"),
+            policy=profile.get("policy"),
+            version=profile.get("version"),
+            target_date=target_date,
+        )
+        # 命盘可随时重算，只留可复述的结论与 provenance
+        self.memory.record(
+            user_id,
+            {
+                "question": question,
+                "analysis": response.analysis,
+                "report": response.report,
+                "strategy": response.strategy,
+                "conflicts": response.conflicts,
+                "recorded_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
+        return response
+
     def analyze(
         self,
         birth_data: dict[str, Any],
@@ -87,18 +149,12 @@ class MingLiService:
         birth = BirthInput(**birth_data)
         chart = self.calculator.calculate_chart(birth)
         liu_month = self._liu_month(chart, target_date)
-        selector = (school, policy, version)
-        if any(value is None for value in selector) and not all(
-            value is None for value in selector
-        ):
-            raise ValueError("school、policy、version 必须同时提供，且不能为空或空白。")
-        if any(value is not None and not value.strip() for value in selector):
-            raise ValueError("school、policy、version 不能为空或空白。")
+        self._validate_selector(school, policy, version)
         if not question:
             raise ValueError("问题不能为空")
 
         liu_month_meta = asdict(liu_month) if liu_month is not None else None
-        if all(value is None for value in selector):
+        if all(value is None for value in (school, policy, version)):
             return AnalysisResponse(
                 chart=chart.to_dict(),
                 analysis=None,
