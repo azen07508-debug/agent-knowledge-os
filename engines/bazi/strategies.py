@@ -52,6 +52,13 @@ class DayunResult(StrategyResult):
     periods: tuple[DayunPeriod, ...]
 
 
+class Strategy(Protocol):
+    context: StrategyContext
+
+    def calculate(self, chart: Chart) -> StrategyResult:
+        """根据命盘计算结构化策略结果。"""
+
+
 class DayunStrategy(Protocol):
     context: StrategyContext
 

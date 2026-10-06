@@ -51,7 +51,7 @@ def test_registry_allows_different_policies_in_same_school():
     registry = StrategyRegistry()
     registry.register(OtherPolicy())
 
-    assert len(registry.list()) == 4
+    assert len(registry.list()) == 5
 
 
 def test_registry_ships_school_variants_for_direction_and_start_age():
@@ -63,9 +63,11 @@ def test_registry_ships_school_variants_for_direction_and_start_age():
         "classical_approx_v1",
         "day_stem_approx_v1",
         "lichun_start_approx_v1",
+        "classical_strength_v1",
     }
     assert any("日干" in note for _, notes in keys for note in notes)
     assert any("立春" in note for _, notes in keys for note in notes)
+    assert any("月令" in note for _, notes in keys for note in notes)
 
 
 def test_registry_requires_explicit_key_when_running():

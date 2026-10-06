@@ -8,11 +8,12 @@ from engines.bazi.models import Chart
 from engines.bazi.strategies import (
     ClassicalApproxDayunPolicy,
     DayStemDayunPolicy,
-    DayunStrategy,
     LichunDayunPolicy,
+    Strategy,
     StrategyContext,
     StrategyResult,
 )
+from engines.bazi.strength import ClassicalStrengthPolicy
 
 StrategyKey = tuple[str, str, str]
 
@@ -21,24 +22,30 @@ class StrategyRegistry:
     """按 ``(school, policy, version)`` 唯一寻址的策略注册表。
 
     注册表只接受调用方明确给出的 key；不会根据 school 或 policy 猜测版本，
-    也不会在缺少 key 时选取默认策略。
+    也不会在缺少 key 时选取默认策略。大运、旺衰等不同类别的策略共用这一套
+    显式寻址规则。
     """
 
-    def __init__(self, strategies: Iterable[DayunStrategy] | None = None) -> None:
-        self._strategies: dict[StrategyKey, DayunStrategy] = {}
-        for strategy in (ClassicalApproxDayunPolicy(), DayStemDayunPolicy(), LichunDayunPolicy()):
+    def __init__(self, strategies: Iterable[Strategy] | None = None) -> None:
+        self._strategies: dict[StrategyKey, Strategy] = {}
+        for strategy in (
+            ClassicalApproxDayunPolicy(),
+            DayStemDayunPolicy(),
+            LichunDayunPolicy(),
+            ClassicalStrengthPolicy(),
+        ):
             self.register(strategy)
         for strategy in strategies or ():
             self.register(strategy)
 
-    def register(self, strategy: DayunStrategy) -> None:
+    def register(self, strategy: Strategy) -> None:
         """注册策略；相同 provenance key 不允许覆盖。"""
         key = self._key(strategy.context)
         if key in self._strategies:
             raise ValueError(f"策略已注册：{'/'.join(key)}")
         self._strategies[key] = strategy
 
-    def get(self, school: str, policy: str, version: str) -> DayunStrategy:
+    def get(self, school: str, policy: str, version: str) -> Strategy:
         """按完整显式 key 获取策略。"""
         key = (school, policy, version)
         try:
@@ -46,7 +53,7 @@ class StrategyRegistry:
         except KeyError as error:
             raise KeyError(f"未找到策略：{'/'.join(key)}") from error
 
-    def list(self) -> tuple[DayunStrategy, ...]:
+    def list(self) -> tuple[Strategy, ...]:
         """返回当前注册策略的只读快照。"""
         return tuple(self._strategies.values())
 
