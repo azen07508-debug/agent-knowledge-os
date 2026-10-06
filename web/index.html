@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MingLi Agent · 本地控制台</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --panel: #ffffff;
+    --ink: #1d1c1a;
+    --muted: #6b675f;
+    --line: #e3e0d9;
+    --accent: #1f5f4b;
+    --error: #8a3b12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header .status { color: var(--muted); font-size: 13px; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    gap: 20px;
+    padding: 20px 24px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    padding: 7px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+  }
+  .field { margin-bottom: 10px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); }
+  button:disabled { opacity: .55; cursor: wait; }
+  #result {
+    display: block;
+    min-height: 340px;
+    margin: 0;
+    padding: 14px;
+    background: #16150f;
+    color: #e9e6da;
+    border-radius: 6px;
+    font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+  }
+  #result.error { color: #ffb59a; }
+  .note { margin-top: 10px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MingLi Agent · 本地控制台</h1>
+  <span class="status" id="status">检查服务中…</span>
+</header>
+
+<main>
+  <section>
+    <h2>出生信息</h2>
+    <div class="grid">
+      <div><label for="year">年</label><input id="year" type="number" value="1990"></div>
+      <div><label for="month">月</label><input id="month" type="number" value="2"></div>
+      <div><label for="day">日</label><input id="day" type="number" value="1"></div>
+      <div><label for="hour">时（0-23）</label><input id="hour" type="number" value="12" min="0" max="23"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px">
+      <label for="gender">性别</label>
+      <select id="gender"><option value="">未指定</option><option>男</option><option>女</option></select>
+    </div>
+
+    <div class="field">
+      <label for="question">问题（用于分析与报告）</label>
+      <input id="question" value="事业与财运">
+    </div>
+
+    <div class="field">
+      <label for="school">school（三项留空则只返回结构事实，不跑策略）</label>
+      <input id="school" placeholder="classical">
+    </div>
+    <div class="field">
+      <label for="policy">policy</label>
+      <input id="policy" placeholder="classical_approx_v1">
+    </div>
+    <div class="field">
+      <label for="version">version</label>
+      <input id="version" placeholder="v1">
+    </div>
+
+    <div class="field">
+      <label for="leap_month">紫微闰月归属（leap_month）</label>
+      <select id="leap_month">
+        <option value="split">split · 前半月归本月、后半月归下月</option>
+        <option value="preceding">preceding · 整月归本月</option>
+        <option value="following">following · 整月归下月</option>
+      </select>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 1fr 1fr">
+      <div><label for="target_year">窗口年份</label><input id="target_year" type="number" value="2026"></div>
+      <div>
+        <label for="relation">结构关系</label>
+        <select id="relation"><option>六冲</option><option>六合</option><option>三合</option></select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button data-run="chart">排八字</button>
+      <button data-run="analyze" class="secondary">分析</button>
+      <button data-run="ziwei" class="secondary">排紫微</button>
+      <button data-run="windows" class="secondary">事件窗口</button>
+    </div>
+    <p class="note">
+      所有计算在本地完成，LLM 不参与排盘；返回值只含结构事实与证据，不含吉凶断语。
+    </p>
+  </section>
+
+  <section>
+    <h2>结果</h2>
+    <pre id="result">选择左侧动作后显示结果。</pre>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const result = $("result");
+
+  function birth() {
+    return {
+      year: Number($("year").value),
+      month: Number($("month").value),
+      day: Number($("day").value),
+      hour: Number($("hour").value),
+      gender: $("gender").value || null,
+    };
+  }
+
+  function selector() {
+    const values = ["school", "policy", "version"].map((key) => $(key).value.trim());
+    const filled = values.filter(Boolean).length;
+    if (filled !== 0 && filled !== 3) throw new Error("school、policy、version 必须同时填写或同时留空");
+    return filled === 3 ? { school: values[0], policy: values[1], version: values[2] } : {};
+  }
+
+  const ACTIONS = {
+    chart: () => ({ path: "/api/chart", body: birth() }),
+    analyze: () => ({
+      path: "/api/analyze",
+      body: { ...birth(), question: $("question").value, ...selector() },
+    }),
+    ziwei: () => ({ path: "/api/ziwei", body: { ...birth(), leap_month: $("leap_month").value } }),
+    windows: () => ({
+      path: "/api/windows",
+      body: { ...birth(), target_year: Number($("target_year").value), relation: $("relation").value },
+    }),
+  };
+
+  async function call(action) {
+    result.classList.remove("error");
+    let request;
+    try {
+      request = ACTIONS[action]();
+    } catch (error) {
+      result.classList.add("error");
+      result.textContent = "错误：" + error.message;
+      return;
+    }
+
+    document.querySelectorAll("button[data-run]").forEach((button) => (button.disabled = true));
+    result.textContent = "计算中…";
+    try {
+      const response = await fetch(request.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.body),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
+      }
+      result.textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+      result.classList.add("error");
+      result.textContent = "错误：" + error.message;
+    } finally {
+      document.querySelectorAll("button[data-run]").forEach((button) => (button.disabled = false));
+    }
+  }
+
+  document.querySelectorAll("button[data-run]").forEach((button) => {
+    button.addEventListener("click", () => call(button.dataset.run));
+  });
+
+  fetch("/api/health")
+    .then((response) => response.json())
+    .then((data) => ($("status").textContent = `服务正常 · provider ${data.provider}`))
+    .catch(() => ($("status").textContent = "服务不可用"));
+</script>
+</body>
+</html>

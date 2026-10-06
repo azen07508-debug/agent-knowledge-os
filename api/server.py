@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from runtime.mingli_service import MingLiService
@@ -43,6 +45,14 @@ class ZiweiRequest(BirthRequest):
 
 service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
+
+WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    """本地 Web 控制台；纯静态单页，不引入前端构建链。"""
+    return FileResponse(WEB_INDEX, media_type="text/html; charset=utf-8")
 
 
 @app.get("/api/health")

@@ -40,3 +40,13 @@ def test_api_rejects_invalid_birth_input():
     response = client.post("/api/chart", json={**payload(), "month": 13})
 
     assert response.status_code == 422
+
+
+def test_web_index_serves_single_page_console():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    for endpoint in ("/api/chart", "/api/analyze", "/api/ziwei", "/api/windows"):
+        assert endpoint in response.text
+    assert "school" in response.text and "policy" in response.text
