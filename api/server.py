@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from runtime.mingli_service import MingLiService
@@ -60,6 +62,18 @@ service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
 WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+
+
+@app.middleware("http")
+async def require_api_key(request: Request, call_next):
+    """配置 MINGLI_API_KEY 后 /api/* 必须携带 X-API-Key；健康检查与静态页保持可探活。"""
+    key = os.environ.get("MINGLI_API_KEY")
+    path = request.url.path
+    if key and path.startswith("/api/") and path != "/api/health":
+        provided = request.headers.get("X-API-Key", "")
+        if not hmac.compare_digest(provided.encode("utf-8"), key.encode("utf-8")):
+            return JSONResponse({"detail": "缺少或错误的 X-API-Key"}, status_code=401)
+    return await call_next(request)
 
 
 @app.get("/", include_in_schema=False)

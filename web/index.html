@@ -127,6 +127,11 @@
     </div>
 
     <div class="field">
+      <label for="apikey">X-API-Key（服务端配置 MINGLI_API_KEY 时必填，仅存在本机浏览器）</label>
+      <input id="apikey" type="password" autocomplete="off" placeholder="未配置则留空">
+    </div>
+
+    <div class="field">
       <label for="leap_month">紫微闰月归属（leap_month）</label>
       <select id="leap_month">
         <option value="split">split · 前半月归本月、后半月归下月</option>
@@ -208,9 +213,15 @@
     document.querySelectorAll("button[data-run]").forEach((button) => (button.disabled = true));
     result.textContent = "计算中…";
     try {
+      const headers = { "Content-Type": "application/json" };
+      const key = $("apikey").value.trim();
+      if (key) {
+        headers["X-API-Key"] = key;
+        localStorage.setItem("mingli-api-key", key);
+      }
       const response = await fetch(request.path, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(request.body),
       });
       const data = await response.json().catch(() => ({}));
@@ -229,6 +240,8 @@
   document.querySelectorAll("button[data-run]").forEach((button) => {
     button.addEventListener("click", () => call(button.dataset.run));
   });
+
+  $("apikey").value = localStorage.getItem("mingli-api-key") || "";
 
   fetch("/api/health")
     .then((response) => response.json())
