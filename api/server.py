@@ -32,6 +32,11 @@ class AnalyzeRequest(BirthRequest):
     target_date: str | None = None
 
 
+class WindowsRequest(BirthRequest):
+    target_year: int
+    relation: str = "六冲"
+
+
 service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
@@ -48,6 +53,19 @@ def chart(request: BirthRequest) -> dict[str, Any]:
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return response.chart
+
+
+@app.post("/api/windows")
+def windows(request: WindowsRequest) -> dict[str, Any]:
+    try:
+        data = request.model_dump()
+        return service.windows(
+            {key: value for key, value in data.items() if key not in {"target_year", "relation"}},
+            request.target_year,
+            request.relation,
+        )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/analyze")

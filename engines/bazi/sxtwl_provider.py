@@ -60,6 +60,15 @@ BRANCH_RELATIONS = {
 SELF_PUNISHMENT = {"辰", "午", "酉", "亥"}
 MUTUAL_PUNISHMENT = {frozenset(pair) for pair in ("丑戌未", "寅巳申")}
 
+BRANCH_RELATION_BY_PAIR = {
+    frozenset(pair): name for name, pairs in BRANCH_RELATIONS.items() for pair in pairs
+}
+
+
+def branch_relation(left: str, right: str) -> str | None:
+    """返回两个地支的结构关系名；没有关系时返回 None。"""
+    return BRANCH_RELATION_BY_PAIR.get(frozenset((left, right)))
+
 
 def solar_term_jds(*years: int) -> tuple[tuple[int, float], ...]:
     """按儒略日升序返回 ``(节气序号, 儒略日)``，跨年查询自动去重。"""

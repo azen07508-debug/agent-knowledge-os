@@ -13,6 +13,7 @@ from typing import Any
 from agents.mingli import AnalystAgent, CriticAgent
 from agents.report import ReportGenerator
 from engines.bazi import BaziCalculator, BirthInput, SxtwlBaziProvider
+from engines.bazi.event_window import event_windows
 from engines.bazi.strategy_compare import compare_results
 from engines.bazi.strategy_registry import StrategyRegistry
 from engines.bazi.time_engine import LiuMonthContext, liu_month_at
@@ -54,6 +55,17 @@ class MingLiService:
         except ValueError as error:
             raise ValueError("target_date 必须为 YYYY-MM-DD 格式。") from error
         return liu_month_at(chart, target)
+
+    def windows(
+        self, birth_data: dict[str, Any], target_year: int, relation: str = "六冲"
+    ) -> dict[str, Any]:
+        """返回指定年份内命中结构关系的流月窗口；只给结构事实，不判吉凶。"""
+        chart = self.calculator.calculate_chart(BirthInput(**birth_data))
+        found = event_windows(chart, target_year, relation)
+        return {
+            "relation": relation,
+            "windows": [asdict(window) for window in found],
+        }
 
     def analyze(
         self,

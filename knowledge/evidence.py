@@ -6,17 +6,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from engines.bazi.models import Chart
-from engines.bazi.sxtwl_provider import BRANCH_RELATIONS
+from engines.bazi.sxtwl_provider import branch_relation
 from knowledge.rules import RuleMatch, RuleRegistry
 
 if TYPE_CHECKING:
     from engines.bazi.strategies import StrategyContext
     from engines.bazi.time_engine import LiuMonthContext
-
-
-BRANCH_RELATION_BY_PAIR = {
-    frozenset(pair): name for name, pairs in BRANCH_RELATIONS.items() for pair in pairs
-}
 
 
 @dataclass(frozen=True)
@@ -71,7 +66,7 @@ def extract_facts(
     if liu_month is not None:
         natal = tuple(pillar.earthly_branch for pillar in chart.pillars)
         for name, branch in zip(("year", "month", "day", "hour"), natal):
-            relation = BRANCH_RELATION_BY_PAIR.get(frozenset((liu_month.earthly_branch, branch)))
+            relation = branch_relation(liu_month.earthly_branch, branch)
             if relation:
                 facts.append(
                     Fact(
