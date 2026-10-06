@@ -74,3 +74,14 @@
 ## 下一阶段建议
 
 先建立受许可、可复现的 MingLi-Bench/fate-bench 数据适配与本地 fixture，再报告外部指标；随后补齐旺衰/用神策略和文献审核，最后单独规划紫微、Web、MCP、认证及生产部署。所有后续报告仍应区分计算、规则、Agent 和外部 benchmark 指标。
+
+## 后续进展（2026-10-06，同一分支的追加提交）
+
+以下交付超出 Task 1–8 范围，已分别提交；上文「未实现与边界」描述的是 Task 1–8 的交付边界，不代表当前分支状态。
+
+- **大运与流派差异**：`DayStemDayunPolicy`、`LichunDayunPolicy`，顺逆依据（年干/日干）× 起运基准（节/立春）正交两维；`classical_approx_v1` 仍显式标 `approximate=True`。
+- **流月与事件窗口**：`liu_month_at`、`extract_facts(..., liu_month)`、4 条 `UNREVIEWED` 流月规则、`event_windows` 与 `POST /api/windows`；结构事实不带 school/policy。
+- **旺衰与用神**：`ClassicalStrengthPolicy`（`approximate=True`，confidence 0.4）、`ClassicalYongshenPolicy`（扶抑法，中和命局候选留空不猜）。
+- **外部 benchmark**：`evaluation/external.py`、`scripts/run_external_benchmarks.py`。实测 fate-bench 295 条中 289 条可复算，289/289 通过（四柱/日主/十神/纳音/藏干十神，藏干按集合比对）；其中 106 例差异仅为巳藏干书写顺序（丙戊庚 / 丙庚戊），单独计数不计失败；大运顺逆按年干规则 289/289，按日干规则 145/289。mingli-bench 160/160 可排盘。问答类指标恒为 `None` 并写明原因（本系统无 LLM 作答器）。
+- **紫微斗数**：`engines/ziwei/` 与 `POST /api/ziwei`，排十二宫干支、五行局、十四主星、六吉六煞、禄存天马与生年四化；闰月归属（split/preceding/following）与晚子时起日以策略参数显式声明。整盘与参考实现 iztro v2.6.1 的 8 组对照向量一致，夹具固化在 `tests/fixtures/ziwei_reference.json`。不含大限、流年、星曜亮度与其余杂曜。
+- **验证**：全量 pytest **642 passed**；`ruff check .` 通过；`git diff --check` 干净。
