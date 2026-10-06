@@ -3,6 +3,7 @@
 import pytest
 
 from engines.bazi import BirthInput, SxtwlBaziProvider
+from engines.bazi.sxtwl_provider import solar_term_jds
 from engines.bazi.time_engine import (
     DayunPolicy,
     liu_month_contexts,
@@ -51,3 +52,11 @@ def test_liu_month_contexts_use_real_solar_terms():
 def test_liu_month_contexts_reject_invalid_year():
     with pytest.raises(ValueError, match="year"):
         liu_month_contexts(chart(), 0)
+
+
+def test_solar_term_jds_are_chronological_and_deduplicated():
+    terms = solar_term_jds(2024, 2025)
+
+    assert len(terms) == 49
+    assert [jd for jd, _ in terms] == sorted(jd for jd, _ in terms)
+    assert len({jd for jd, _ in terms}) == len(terms)

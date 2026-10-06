@@ -4,18 +4,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import sxtwl
-
 from engines.bazi.models import Chart
-from engines.bazi.strategies import ClassicalApproxDayunPolicy, DayunResult, DayunStrategy
+from engines.bazi.strategies import (
+    ClassicalApproxDayunPolicy,
+    DayStemDayunPolicy,
+    DayunResult,
+    DayunStrategy,
+    LichunDayunPolicy,
+)
 from engines.bazi.strategy_registry import StrategyRegistry
-from engines.bazi.sxtwl_provider import BRANCHES, STEMS
+from engines.bazi.sxtwl_provider import BRANCHES, STEMS, solar_term_jds
 
 __all__ = [
     "ClassicalApproxDayunPolicy",
+    "DayStemDayunPolicy",
     "DayunPolicy",
     "DayunResult",
     "DayunStrategy",
+    "LichunDayunPolicy",
     "LiuMonthContext",
     "StrategyRegistry",
     "YearContext",
@@ -56,19 +62,17 @@ LIU_MONTH_TERMS = (
 def liu_month_contexts(chart: Chart, year: int) -> tuple[LiuMonthContext, ...]:
     if year < 1:
         raise ValueError("year 必须为正整数。")
-    terms = {}
-    for item in sxtwl.getJieQiByYear(year):
-        terms.setdefault(item.jqIndex, item)
-    terms[1] = next(item for item in sxtwl.getJieQiByYear(year + 1) if item.jqIndex == 1)
+    terms: dict[int, float] = {}
+    for jd, index in solar_term_jds(year, year + 1):
+        terms.setdefault(index, jd)
     year_stem = STEMS[(year - 4) % 60 % 10]
     first_stem = ("丙", "戊", "庚", "壬", "甲")[(STEMS.index(year_stem) // 2) % 5]
     result = []
     for month_index, (term_index, term_name) in enumerate(LIU_MONTH_TERMS):
-        term = terms[term_index]
         stem = STEMS[(STEMS.index(first_stem) + month_index) % 10]
         branch = BRANCHES[(2 + month_index) % 12]
         result.append(LiuMonthContext(
-            year, month_index, stem, branch, term_name, float(term.jd), chart.provider
+            year, month_index, stem, branch, term_name, terms[term_index], chart.provider
         ))
     return tuple(result)
 

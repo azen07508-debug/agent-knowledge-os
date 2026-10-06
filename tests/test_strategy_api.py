@@ -37,11 +37,32 @@ def test_analyze_accepts_explicit_strategy_selector():
         "school": "classical",
         "policy": "classical_approx_v1",
         "version": "1",
-        "assumptions": ["按月柱顺逆推导", "起运年龄按三天一岁近似", "不计算精确起运时刻"],
+        "assumptions": ["顺逆按年干阴阳", "起运取顺行未来节或逆行过去节", "三天折一年近似"],
     }
     assert "conflicts" in body
     assert "限制" in body["report"]
     assert body["metadata"]["strategy_selection"] == "explicit"
+
+
+def test_analyze_school_variants_can_disagree_on_direction():
+    base = {
+        **payload(),
+        "year": 1990,
+        "month": 3,
+        "day": 1,
+        "school": "classical",
+        "version": "1",
+    }
+
+    yearly = client.post(
+        "/api/analyze", json={**base, "policy": "classical_approx_v1"}
+    ).json()
+    daily = client.post(
+        "/api/analyze", json={**base, "policy": "day_stem_approx_v1"}
+    ).json()
+
+    assert yearly["strategy"]["direction"] == "forward"
+    assert daily["strategy"]["direction"] == "backward"
 
 
 def test_analyze_rejects_unknown_strategy_without_fallback():

@@ -7,7 +7,9 @@ from collections.abc import Iterable
 from engines.bazi.models import Chart
 from engines.bazi.strategies import (
     ClassicalApproxDayunPolicy,
+    DayStemDayunPolicy,
     DayunStrategy,
+    LichunDayunPolicy,
     StrategyContext,
     StrategyResult,
 )
@@ -24,7 +26,8 @@ class StrategyRegistry:
 
     def __init__(self, strategies: Iterable[DayunStrategy] | None = None) -> None:
         self._strategies: dict[StrategyKey, DayunStrategy] = {}
-        self.register(ClassicalApproxDayunPolicy())
+        for strategy in (ClassicalApproxDayunPolicy(), DayStemDayunPolicy(), LichunDayunPolicy()):
+            self.register(strategy)
         for strategy in strategies or ():
             self.register(strategy)
 

@@ -61,6 +61,15 @@ SELF_PUNISHMENT = {"辰", "午", "酉", "亥"}
 MUTUAL_PUNISHMENT = {frozenset(pair) for pair in ("丑戌未", "寅巳申")}
 
 
+def solar_term_jds(*years: int) -> tuple[tuple[int, float], ...]:
+    """按儒略日升序返回 ``(节气序号, 儒略日)``，跨年查询自动去重。"""
+    events: dict[float, int] = {}
+    for year in years:
+        for item in sxtwl.getJieQiByYear(year):
+            events.setdefault(round(float(item.jd), 6), item.jqIndex)
+    return tuple(sorted((jd, index) for jd, index in events.items()))
+
+
 def _ten_god(day_master: str, stem: str, *, is_day_pillar: bool = False) -> str:
     """按日主五行、生克和阴阳计算天干十神。"""
     if is_day_pillar:

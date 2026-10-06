@@ -7,8 +7,10 @@ import pytest
 from engines.bazi import BirthInput, SxtwlBaziProvider
 from engines.bazi.strategies import (
     ClassicalApproxDayunPolicy,
+    DayStemDayunPolicy,
     DayunPeriod,
     DayunResult,
+    LichunDayunPolicy,
     StrategyContext,
     StrategyResult,
 )
@@ -89,3 +91,36 @@ def test_dayun_approx_start_age_uses_birth_to_term_distance():
     assert result.start_age != 3.0
     assert result.approximate is True
     assert any("节气" in conflict for conflict in result.conflicts)
+
+
+def test_dayun_start_age_follows_direction_to_reaching_jie():
+    male = ClassicalApproxDayunPolicy().calculate(chart(gender="男"))
+    female = ClassicalApproxDayunPolicy().calculate(chart(gender="女"))
+
+    # 1990-02-01 在立春前，年干为己（阴年）：阴年男逆行、女顺行。
+    assert (male.direction, female.direction) == ("backward", "forward")
+    assert male.start_age > 0
+    assert female.start_age > 0
+    assert male.start_age != female.start_age
+
+
+def test_day_stem_school_can_flip_dayun_direction():
+    target = SxtwlBaziProvider().calculate(BirthInput(1990, 3, 1, 12, gender="男"))
+
+    yearly = ClassicalApproxDayunPolicy().calculate(target)
+    daily = DayStemDayunPolicy().calculate(target)
+
+    assert yearly.context.policy == "classical_approx_v1"
+    assert daily.context.policy == "day_stem_approx_v1"
+    assert (yearly.direction, daily.direction) == ("forward", "backward")
+
+
+def test_lichun_school_uses_different_start_age_reference():
+    target = chart()
+    nearest = ClassicalApproxDayunPolicy().calculate(target)
+    lichun = LichunDayunPolicy().calculate(target)
+
+    assert lichun.context.policy == "lichun_start_approx_v1"
+    assert lichun.approximate is True
+    assert lichun.start_age != nearest.start_age
+    assert any("立春" in note for note in lichun.context.assumptions)
