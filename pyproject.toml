@@ -1,7 +1,7 @@
 [project]
-name = "agent-knowledge-os"
+name = "mingli-agent"
 version = "0.1.0"
-description = "本地 AI Agent 知识库系统，把 EverOS、Arbiter、Obsidian 和 Codex 工作流连接起来。"
+description = "MingLi Agent：可验证、可追溯的中文命理推理系统。"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
