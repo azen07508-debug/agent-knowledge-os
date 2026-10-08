@@ -1,0 +1,131 @@
+{
+  "source": "https://github.com/astrorigin/pyswisseph",
+  "version": "2.10.3.2",
+  "backend": "Moshier analytic ephemeris, no downloaded files",
+  "frame": "geocentric true ecliptic/equinox of date",
+  "sun_flags": "calc(JD_TT, SUN, FLG_MOSEPH), apparent",
+  "moon_flags": "calc(JD_TT, MOON, FLG_MOSEPH | FLG_TRUEPOS), geometric",
+  "tolerance_degrees": 0.016666666666666666,
+  "samples": [
+    {
+      "utc": "2024-01-15T12:00:00+00:00",
+      "sun_longitude_deg": 294.8187244180618,
+      "moon_longitude_deg": 349.8927839957821,
+      "jd_tt": 2460325.000854996,
+      "delta_t_seconds": 73.87164782267064
+    },
+    {
+      "utc": "2024-02-15T12:00:00+00:00",
+      "sun_longitude_deg": 326.28921299257115,
+      "moon_longitude_deg": 42.17624443333261,
+      "jd_tt": 2460356.0008555762,
+      "delta_t_seconds": 73.9218023547437
+    },
+    {
+      "utc": "2024-03-15T12:00:00+00:00",
+      "sun_longitude_deg": 355.3939646204562,
+      "moon_longitude_deg": 64.9631922515108,
+      "jd_tt": 2460385.00085612,
+      "delta_t_seconds": 73.96879418520257
+    },
+    {
+      "utc": "2024-04-15T12:00:00+00:00",
+      "sun_longitude_deg": 26.008129073678617,
+      "moon_longitude_deg": 112.55916356543567,
+      "jd_tt": 2460416.0008567027,
+      "delta_t_seconds": 74.01910462067463
+    },
+    {
+      "utc": "2024-05-15T12:00:00+00:00",
+      "sun_longitude_deg": 55.14485040629126,
+      "moon_longitude_deg": 145.23766838057125,
+      "jd_tt": 2460446.000857267,
+      "delta_t_seconds": 74.0678689093329
+    },
+    {
+      "utc": "2024-06-15T12:00:00+00:00",
+      "sun_longitude_deg": 84.8759671910694,
+      "moon_longitude_deg": 188.76593425661065,
+      "jd_tt": 2460477.000857851,
+      "delta_t_seconds": 74.1183377627749
+    },
+    {
+      "utc": "2024-07-15T12:00:00+00:00",
+      "sun_longitude_deg": 113.49121766293592,
+      "moon_longitude_deg": 220.63520742650616,
+      "jd_tt": 2460507.0008584172,
+      "delta_t_seconds": 74.16725544026121
+    },
+    {
+      "utc": "2024-08-15T12:00:00+00:00",
+      "sun_longitude_deg": 143.15022508494542,
+      "moon_longitude_deg": 266.7488537079755,
+      "jd_tt": 2460538.000859003,
+      "delta_t_seconds": 74.21788271167316
+    },
+    {
+      "utc": "2024-09-15T12:00:00+00:00",
+      "sun_longitude_deg": 173.13725013808565,
+      "moon_longitude_deg": 316.7359122763744,
+      "jd_tt": 2460569.0008595902,
+      "delta_t_seconds": 74.26859060651623
+    },
+    {
+      "utc": "2024-10-15T12:00:00+00:00",
+      "sun_longitude_deg": 202.6243099707298,
+      "moon_longitude_deg": 354.6293481898673,
+      "jd_tt": 2460599.000860159,
+      "delta_t_seconds": 74.31773946736939
+    },
+    {
+      "utc": "2024-11-15T12:00:00+00:00",
+      "sun_longitude_deg": 233.61493657903097,
+      "moon_longitude_deg": 48.11946160359825,
+      "jd_tt": 2460630.000860748,
+      "delta_t_seconds": 74.36860593734309
+    },
+    {
+      "utc": "2024-12-15T12:00:00+00:00",
+      "sun_longitude_deg": 264.0069261685547,
+      "moon_longitude_deg": 85.64866457350024,
+      "jd_tt": 2460660.0008613183,
+      "delta_t_seconds": 74.41790802986361
+    },
+    {
+      "utc": "1900-01-01T12:00:00+00:00",
+      "sun_longitude_deg": 280.6632797538298,
+      "moon_longitude_deg": 279.61649454719503,
+      "jd_tt": 2415020.9999680906,
+      "delta_t_seconds": -2.7569667901843786
+    },
+    {
+      "utc": "1950-01-01T12:00:00+00:00",
+      "sun_longitude_deg": 280.51439063670483,
+      "moon_longitude_deg": 67.54456054645995,
+      "jd_tt": 2433283.000336279,
+      "delta_t_seconds": 29.05451419064775
+    },
+    {
+      "utc": "2000-01-01T12:00:00+00:00",
+      "sun_longitude_deg": 280.3689198899157,
+      "moon_longitude_deg": 223.3239646115889,
+      "jd_tt": 2451545.000738971,
+      "delta_t_seconds": 63.847089569816944
+    },
+    {
+      "utc": "2050-01-01T12:00:00+00:00",
+      "sun_longitude_deg": 281.25822015108287,
+      "moon_longitude_deg": 25.384886195097717,
+      "jd_tt": 2469808.0010760347,
+      "delta_t_seconds": 92.9693857789971
+    },
+    {
+      "utc": "2100-01-01T12:00:00+00:00",
+      "sun_longitude_deg": 281.11517895399106,
+      "moon_longitude_deg": 164.44594178629345,
+      "jd_tt": 2488070.0023455415,
+      "delta_t_seconds": 202.6547912042588
+    }
+  ],
+  "time_basis": "Identical TT epochs; JD(TT) frozen from Astronomy Engine 2.1.19 Espenak-Meeus DeltaT model. Swiss UT DeltaT defaults must not be mixed into position comparisons."
+}

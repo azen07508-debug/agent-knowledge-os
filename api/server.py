@@ -3,65 +3,41 @@
 from __future__ import annotations
 
 import hmac
+import math
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from runtime.input_models import (
+    AnalyzeRequest,
+    BirthRequest,
+    MemoryAnalyzeRequest,
+    MemoryProfileRequest,
+    WesternRequest,
+    WindowsRequest,
+    ZiweiRequest,
+)
 from runtime.mingli_service import MingLiService
-
-
-class BirthRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    year: int = Field(ge=1, le=9999)
-    month: int
-    day: int
-    hour: int
-    minute: int = 0
-    longitude: float | None = Field(default=None, ge=-180, le=180)
-    latitude: float | None = Field(default=None, ge=-90, le=90)
-    timezone: str = "Asia/Shanghai"
-    gender: str | None = None
-
-
-class AnalyzeRequest(BirthRequest):
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-    school: str | None = None
-    policy: str | None = None
-    version: str | None = None
-    target_date: str | None = None
-
-
-class WindowsRequest(BirthRequest):
-    target_year: int
-    relation: str = "六冲"
-
-
-class ZiweiRequest(BirthRequest):
-    leap_month: str = "split"
-
-
-class MemoryProfileRequest(BirthRequest):
-    school: str | None = None
-    policy: str | None = None
-    version: str | None = None
-
-
-class MemoryAnalyzeRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-    target_date: str | None = None
-
 
 service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
 WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # 标准库 JSON parser 接受 NaN/Infinity，但错误响应的 JSON encoder 不接受；
+    # 将错误中的非有限输入转成文本，确保非法数值仍返回 422 而非 500。
+    errors = jsonable_encoder(
+        exc.errors(), custom_encoder={float: lambda value: value if math.isfinite(value) else str(value)}
+    )
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 @app.middleware("http")
@@ -117,6 +93,14 @@ def ziwei(request: ZiweiRequest) -> dict[str, Any]:
             {key: value for key, value in data.items() if key != "leap_month"},
             leap_month=request.leap_month,
         )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/western/chart")
+def western_chart(request: WesternRequest) -> dict[str, Any]:
+    try:
+        return service.western(request.birth_data())
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

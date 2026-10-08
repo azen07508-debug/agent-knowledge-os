@@ -2,6 +2,10 @@
 
 **可验证的命理推理系统 · Verifiable Chinese Astrology Reasoning System**
 
+当前实现包括八字排盘与显式策略、紫微本命盘，以及离线计算的回归黄道太阳/月亮星座。
+西方星座支持分钟精度或仅日期输入；交界与未知出生时间保留候选。
+具体接口、时区/DST 处理、精度和范围见 [西方星座使用说明](docs/western-zodiac.md)。
+
 ---
 
 ## 项目定位
@@ -236,12 +240,11 @@
 
 ---
 
-## 安装与运行（当前为规划阶段）
+## 安装与运行
 
 ```bash
-# 克隆项目
-git clone <repo-url>
-cd agent-knowledge-os
+# 使用已有 checkout，开发工作保留在 mingli-split 分支
+cd /workspace/agent-knowledge-os
 
 # 创建虚拟环境
 python3 -m venv .venv
@@ -253,8 +256,8 @@ pip install -r requirements.txt
 # 运行测试
 pytest tests/
 
-# 启动 API 服务（Phase 10 后）
-python -m runtime.api_server
+# 启动 API 和静态 Web 控制台
+python -m uvicorn api.server:app --host 127.0.0.1 --port 8000
 ```
 
 ---
@@ -295,6 +298,7 @@ MIT License
 
 ---
 
-**当前状态**：Phase 0 规划完成，准备进入 Phase 1 排盘引擎集成。
+**当前状态**：八字、紫微、太阳/月亮星座事实层与 API/Web/MCP 可本地离线运行；
+上文的长期产品路线和目标指标属于规划，不代表已完成验收。
 
-**下一步**：集成 HeiGe-SuanMing，建立排盘引擎测试框架。
+**下一步**：为西方占星加入有来源的解释规则，再评估上升、宫位、相位与跨体系报告。

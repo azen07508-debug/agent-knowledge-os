@@ -41,12 +41,12 @@ def test_initialized_notification_gets_no_response():
     assert server.handle(message) is None
 
 
-def test_tools_list_exposes_the_four_public_operations():
+def test_tools_list_exposes_the_five_public_operations():
     server = McpServer()
     tools = request(server, "tools/list")["result"]["tools"]
     by_name = {tool["name"]: tool for tool in tools}
 
-    assert set(by_name) == {"pa_chart", "analyze", "ziwei_chart", "event_windows"}
+    assert set(by_name) == {"pa_chart", "analyze", "ziwei_chart", "event_windows", "western_chart"}
     for tool in tools:
         assert tool["description"]
         assert tool["inputSchema"]["type"] == "object"
@@ -102,6 +102,8 @@ def test_stdio_transport_round_trip():
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
         {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
          "params": {"name": "pa_chart", "arguments": BIRTH}},
+        {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+         "params": {"name": "western_chart", "arguments": BIRTH}},
     ]
     env = {**os.environ, "PYTHONPATH": str(Path.cwd())}
     process = subprocess.run(
@@ -115,6 +117,9 @@ def test_stdio_transport_round_trip():
     )
 
     responses = [json.loads(line) for line in process.stdout.splitlines() if line.strip()]
-    assert [message["id"] for message in responses] == [1, 2, 3]
+    assert [message["id"] for message in responses] == [1, 2, 3, 4]
     assert "tools" in responses[1]["result"]
     assert json.loads(responses[2]["result"]["content"][0]["text"])["pillars"]
+    western = json.loads(responses[3]["result"]["content"][0]["text"])["chart"]
+    assert western["sun"]["sign"] == "水瓶座"
+    assert western["moon"]["sign"] == "白羊座"

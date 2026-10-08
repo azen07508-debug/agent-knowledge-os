@@ -8,3 +8,4 @@ pytest
 sxtwl==2.0.7
 fastapi
 uvicorn
+astronomy-engine==2.1.19

@@ -17,6 +17,8 @@ from engines.bazi.event_window import event_windows
 from engines.bazi.strategy_compare import compare_results
 from engines.bazi.strategy_registry import StrategyRegistry
 from engines.bazi.time_engine import LiuMonthContext, liu_month_at
+from engines.birth_time import validate_query_year
+from engines.western import WesternBirthInput, WesternCalculator
 from engines.ziwei import ZiweiCalculator
 from knowledge.default_rules import default_registry
 from knowledge.evidence import build_evidence, extract_facts
@@ -43,6 +45,7 @@ class MingLiService:
     def __init__(self, registry=None, memory: UserMemory | None = None) -> None:
         self.calculator = BaziCalculator(SxtwlBaziProvider())
         self.ziwei_calculator = ZiweiCalculator()
+        self.western_calculator = WesternCalculator()
         self.memory = memory or UserMemory()
         self.registry = registry or default_registry()
         self.strategy_registry = StrategyRegistry()
@@ -73,6 +76,7 @@ class MingLiService:
         self, birth_data: dict[str, Any], target_year: int, relation: str = "六冲"
     ) -> dict[str, Any]:
         """返回指定年份内命中结构关系的流月窗口；只给结构事实，不判吉凶。"""
+        validate_query_year(target_year, maximum=9997)
         chart = self.calculator.calculate_chart(BirthInput(**birth_data))
         found = event_windows(chart, target_year, relation)
         return {
@@ -83,6 +87,11 @@ class MingLiService:
     def ziwei(self, birth_data: dict[str, Any], *, leap_month: str = "split") -> dict[str, Any]:
         """紫微斗数本命盘；只给结构事实，不判吉凶，也不排大限流年。"""
         chart = self.ziwei_calculator.calculate(birth_data, leap_month=leap_month)
+        return {"chart": chart.to_dict()}
+
+    def western(self, birth_data: dict[str, Any]) -> dict[str, Any]:
+        """离线太阳/月亮星座；未知出生时间返回当地民用日内的候选。"""
+        chart = self.western_calculator.calculate(WesternBirthInput(**birth_data))
         return {"chart": chart.to_dict()}
 
     def save_profile(

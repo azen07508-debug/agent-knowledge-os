@@ -17,7 +17,8 @@ dependencies = [
   "pytest",
   "sxtwl==2.0.7",
   "fastapi",
-  "uvicorn"
+  "uvicorn",
+  "astronomy-engine==2.1.19"
 ]
 
 [tool.pytest.ini_options]

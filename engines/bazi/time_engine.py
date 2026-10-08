@@ -17,6 +17,7 @@ from engines.bazi.strategies import (
 )
 from engines.bazi.strategy_registry import StrategyRegistry
 from engines.bazi.sxtwl_provider import BRANCHES, STEMS, solar_term_jds
+from engines.birth_time import validate_query_year
 
 __all__ = [
     "ClassicalApproxDayunPolicy",
@@ -64,8 +65,7 @@ LIU_MONTH_TERMS = (
 
 
 def liu_month_contexts(chart: Chart, year: int) -> tuple[LiuMonthContext, ...]:
-    if year < 1:
-        raise ValueError("year 必须为正整数。")
+    validate_query_year(year, maximum=9998)
     terms: dict[int, float] = {}
     for jd, index in solar_term_jds(year, year + 1):
         terms.setdefault(index, jd)
@@ -116,6 +116,8 @@ def year_context(chart: Chart, year: int) -> YearContext:
 
 
 def year_contexts(chart: Chart, start_year: int, end_year: int) -> tuple[YearContext, ...]:
+    validate_query_year(start_year)
+    validate_query_year(end_year)
     if start_year > end_year:
         raise ValueError("start_year 不能大于 end_year。")
     return tuple(year_context(chart, year) for year in range(start_year, end_year + 1))

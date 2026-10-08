@@ -154,6 +154,7 @@ def _solar_time_datetime(birth: BirthInput) -> datetime:
     local = datetime(
         birth.year, birth.month, birth.day, birth.hour, birth.minute,
         tzinfo=ZoneInfo(birth.timezone),
+        fold=birth.fold or 0,
     )
     standard_meridian = local.utcoffset().total_seconds() / 3600 * 15
     longitude_minutes = (birth.longitude - standard_meridian) * 4

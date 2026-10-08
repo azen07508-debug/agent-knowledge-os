@@ -14,6 +14,7 @@ import sxtwl
 from engines.bazi.models import Chart
 from engines.bazi.sxtwl_provider import BRANCH_RELATIONS
 from engines.bazi.time_engine import liu_month_contexts
+from engines.birth_time import validate_query_year
 
 RELATION_SOURCE = "地支关系表（算法定义，待流派解释核校）"
 
@@ -41,8 +42,7 @@ def event_windows(
 ) -> tuple[EventWindow, ...]:
     if relation not in BRANCH_RELATIONS:
         raise ValueError(f"未知关系：{relation}")
-    if year < 1:
-        raise ValueError("year 必须为正整数。")
+    validate_query_year(year, maximum=9997)
 
     months = liu_month_contexts(chart, year)
     boundaries = [item.start_jd for item in months]

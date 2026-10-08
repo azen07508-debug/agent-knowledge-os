@@ -85,6 +85,11 @@
   }
   #result.error { color: #ffb59a; }
   .note { margin-top: 10px; color: var(--muted); font-size: 12px; }
+  .zodiac-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .zodiac-cards article { padding: 12px; background: var(--bg); border-radius: 6px; }
+  .zodiac-cards h3 { margin: 0; font-size: 13px; color: var(--muted); }
+  .zodiac-cards p { margin: 6px 0 0; font-size: 18px; }
+  #western-summary { margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -97,10 +102,30 @@
   <section>
     <h2>出生信息</h2>
     <div class="grid">
-      <div><label for="year">年</label><input id="year" type="number" value="1990"></div>
-      <div><label for="month">月</label><input id="month" type="number" value="2"></div>
-      <div><label for="day">日</label><input id="day" type="number" value="1"></div>
+      <div><label for="year">年</label><input id="year" type="number" value="1990" min="1" max="9999"></div>
+      <div><label for="month">月</label><input id="month" type="number" value="2" min="1" max="12"></div>
+      <div><label for="day">日</label><input id="day" type="number" value="1" min="1" max="31"></div>
       <div><label for="hour">时（0-23）</label><input id="hour" type="number" value="12" min="0" max="23"></div>
+    </div>
+
+    <div class="grid field" style="margin-top:10px">
+      <div><label for="minute">分（0–59）</label><input id="minute" type="number" value="0" min="0" max="59"></div>
+      <div style="grid-column:span 3">
+        <label for="time_precision">出生时间精度</label>
+        <select id="time_precision"><option value="minute">准确到分钟</option><option value="day">只知道日期（仅太阳/月亮星座）</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="timezone">出生地时区</label>
+      <input id="timezone" value="Asia/Shanghai" placeholder="例如 America/New_York">
+    </div>
+    <div class="grid field">
+      <div style="grid-column:span 2"><label for="longitude">出生地经度（可选）</label><input id="longitude" type="number" min="-180" max="180" step="any" placeholder="东经为正"></div>
+      <div style="grid-column:span 2"><label for="latitude">出生地纬度（可选）</label><input id="latitude" type="number" min="-90" max="90" step="any" placeholder="北纬为正"></div>
+    </div>
+    <div class="field">
+      <label for="fold">夏令时重复时刻</label>
+      <select id="fold"><option value="">通常无需选择</option><option value="0">前一次</option><option value="1">后一次</option></select>
     </div>
 
     <div class="field" style="margin-top:10px">
@@ -141,10 +166,10 @@
     </div>
 
     <div class="grid" style="grid-template-columns: 1fr 1fr">
-      <div><label for="target_year">窗口年份</label><input id="target_year" type="number" value="2026"></div>
+      <div><label for="target_year">窗口年份</label><input id="target_year" type="number" value="2026" min="1" max="9997"></div>
       <div>
         <label for="relation">结构关系</label>
-        <select id="relation"><option>六冲</option><option>六合</option><option>三合</option></select>
+        <select id="relation"><option>六冲</option><option>六合</option><option>六害</option><option>相破</option></select>
       </div>
     </div>
 
@@ -152,16 +177,25 @@
       <button data-run="chart">排八字</button>
       <button data-run="analyze" class="secondary">分析</button>
       <button data-run="ziwei" class="secondary">排紫微</button>
+      <button data-run="western" class="secondary">太阳/月亮星座</button>
       <button data-run="windows" class="secondary">事件窗口</button>
     </div>
     <p class="note">
       所有计算在本地完成，LLM 不参与排盘；返回值只含结构事实与证据，不含吉凶断语。
     </p>
+    <p class="note">太阳/月亮星座使用回归黄道，支持 1900–2100 年。仅日期或星座交界存在不确定性时显示候选；本期不计算上升与宫位。</p>
   </section>
 
   <section>
     <h2>结果</h2>
-    <pre id="result">选择左侧动作后显示结果。</pre>
+    <div id="western-summary" hidden>
+      <div class="zodiac-cards">
+        <article><h3>太阳星座</h3><p id="sun-sign"></p></article>
+        <article><h3>月亮星座</h3><p id="moon-sign"></p></article>
+      </div>
+      <p id="western-note" class="note"></p>
+    </div>
+    <pre id="result" role="status" aria-live="polite">选择左侧动作后显示结果。</pre>
   </section>
 </main>
 
@@ -169,12 +203,32 @@
   const $ = (id) => document.getElementById(id);
   const result = $("result");
 
-  function birth() {
+  function numberInput(id, optional = false) {
+    const text = $(id).value.trim();
+    if (!text) {
+      if (optional) return null;
+      throw new Error($(id).labels[0].textContent + "不能为空");
+    }
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("请输入有效数字");
+    return value;
+  }
+
+  function birth(allowUnknown = false) {
+    const unknown = $("time_precision").value === "day";
+    if (unknown && !allowUnknown) throw new Error("此操作需要出生时间；只知道日期时请选择太阳/月亮星座");
+    const timezone = $("timezone").value.trim();
+    if (!timezone) throw new Error("请填写出生地时区");
     return {
-      year: Number($("year").value),
-      month: Number($("month").value),
-      day: Number($("day").value),
-      hour: Number($("hour").value),
+      year: numberInput("year"),
+      month: numberInput("month"),
+      day: numberInput("day"),
+      hour: unknown ? null : numberInput("hour"),
+      minute: unknown ? 0 : numberInput("minute"),
+      timezone,
+      longitude: numberInput("longitude", true),
+      latitude: numberInput("latitude", true),
+      fold: unknown ? null : numberInput("fold", true),
       gender: $("gender").value || null,
     };
   }
@@ -193,14 +247,16 @@
       body: { ...birth(), question: $("question").value, ...selector() },
     }),
     ziwei: () => ({ path: "/api/ziwei", body: { ...birth(), leap_month: $("leap_month").value } }),
+    western: () => ({ path: "/api/western/chart", body: birth(true) }),
     windows: () => ({
       path: "/api/windows",
-      body: { ...birth(), target_year: Number($("target_year").value), relation: $("relation").value },
+      body: { ...birth(), target_year: numberInput("target_year"), relation: $("relation").value },
     }),
   };
 
   async function call(action) {
     result.classList.remove("error");
+    $("western-summary").hidden = true;
     let request;
     try {
       request = ACTIONS[action]();
@@ -229,6 +285,16 @@
         throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
       }
       result.textContent = JSON.stringify(data, null, 2);
+      if (action === "western") {
+        for (const body of ["sun", "moon"]) {
+          const position = data.chart[body];
+          $(body + "-sign").textContent = position.sign || "可能是 " + position.possible_signs.join(" / ");
+        }
+        $("western-note").textContent = data.chart.time_precision === "day"
+          ? "按出生地当天完整时间范围计算候选，未补出生时刻。"
+          : "按出生时刻计算；交界落在计算误差范围内时显示相邻候选。";
+        $("western-summary").hidden = false;
+      }
     } catch (error) {
       result.classList.add("error");
       result.textContent = "错误：" + error.message;
@@ -242,6 +308,11 @@
   });
 
   $("apikey").value = localStorage.getItem("mingli-api-key") || "";
+  $("time_precision").addEventListener("change", () => {
+    const unknown = $("time_precision").value === "day";
+    for (const id of ["hour", "minute", "fold"]) $(id).disabled = unknown;
+    $("western-summary").hidden = true;
+  });
 
   fetch("/api/health")
     .then((response) => response.json())

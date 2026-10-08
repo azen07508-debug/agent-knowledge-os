@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from typing import Any
+
+from engines.birth_time import calendar_datetime, local_time_to_utc, validate_location
 
 
 @dataclass(frozen=True)
@@ -24,18 +25,12 @@ class BirthInput:
     latitude: float | None = None
     timezone: str = "Asia/Shanghai"
     gender: str | None = None
+    fold: int | None = None
 
     def __post_init__(self) -> None:
-        if not 1 <= self.year <= 9999:
-            raise ValueError("year 必须在 1 到 9999 之间。")
-        try:
-            datetime(self.year, self.month, self.day, self.hour, self.minute)
-        except ValueError as exc:
-            raise ValueError(f"出生日期时间无效：{exc}") from exc
-        if not -180 <= (self.longitude if self.longitude is not None else 0) <= 180:
-            raise ValueError("longitude 必须在 -180 到 180 之间。")
-        if not -90 <= (self.latitude if self.latitude is not None else 0) <= 90:
-            raise ValueError("latitude 必须在 -90 到 90 之间。")
+        local = calendar_datetime(self.year, self.month, self.day, self.hour, self.minute)
+        validate_location(self.longitude, self.latitude)
+        local_time_to_utc(local, self.timezone, self.fold)
         if self.gender not in (None, "男", "女", "male", "female"):
             raise ValueError("gender 只能是 男、女、male、female 或 None。")
 

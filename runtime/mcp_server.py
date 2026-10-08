@@ -1,6 +1,6 @@
 """MCP（Model Context Protocol）stdio 入口：把排盘能力作为工具暴露给 Agent 客户端。
 
-ponytail: 只实现本仓库四个工具所需的最小子集（initialize / ping / tools/list /
+只实现本仓库工具所需的最小子集（initialize / ping / tools/list /
 tools/call），不引入 MCP SDK；需要会话、资源订阅或采样时再换官方实现。
 """
 
@@ -10,85 +10,51 @@ import json
 import sys
 from typing import Any
 
+from runtime.input_models import (
+    AnalyzeRequest,
+    BirthRequest,
+    WesternRequest,
+    WindowsRequest,
+    ZiweiRequest,
+)
 from runtime.mingli_service import MingLiService
 
 PROTOCOL_VERSION = "2025-06-18"
 
-# BirthInput 的合法入参；各工具在此之上追加自己的字段，其余键一律丢弃。
-BIRTH_KEYS = (
-    "year",
-    "month",
-    "day",
-    "hour",
-    "minute",
-    "longitude",
-    "latitude",
-    "timezone",
-    "gender",
-)
-
-_BIRTH_PROPERTIES: dict[str, Any] = {
-    "year": {"type": "integer"},
-    "month": {"type": "integer"},
-    "day": {"type": "integer"},
-    "hour": {"type": "integer", "description": "出生地当地民用时间，24 小时制"},
-    "minute": {"type": "integer"},
-    "longitude": {"type": ["number", "null"]},
-    "latitude": {"type": ["number", "null"]},
-    "timezone": {"type": "string"},
-    "gender": {"type": ["string", "null"], "description": "男、女、male、female 或 null"},
+INPUT_MODELS = {
+    "pa_chart": BirthRequest,
+    "analyze": AnalyzeRequest,
+    "ziwei_chart": ZiweiRequest,
+    "event_windows": WindowsRequest,
+    "western_chart": WesternRequest,
 }
-
-
-def _schema(extra: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "type": "object",
-        "properties": {**_BIRTH_PROPERTIES, **extra},
-        "required": ["year", "month", "day", "hour"],
-    }
 
 
 TOOLS: tuple[dict[str, Any], ...] = (
     {
         "name": "pa_chart",
         "description": "按公历出生时间排八字命盘，返回四柱、十神、纳音、藏干与结构关系等确定性事实，不作吉凶判断。",
-        "inputSchema": _schema({}),
+        "inputSchema": INPUT_MODELS["pa_chart"].model_json_schema(),
     },
     {
         "name": "analyze",
         "description": "在指定策略下分析命盘并给出带 provenance 的结论；school、policy、version 必须同时填写或同时留空。",
-        "inputSchema": _schema(
-            {
-                "question": {"type": "string", "description": "要回答的问题"},
-                "school": {"type": ["string", "null"]},
-                "policy": {"type": ["string", "null"]},
-                "version": {"type": ["string", "null"]},
-                "target_date": {"type": ["string", "null"], "description": "YYYY-MM-DD，用于定位流月"},
-            }
-        ),
+        "inputSchema": INPUT_MODELS["analyze"].model_json_schema(),
     },
     {
         "name": "ziwei_chart",
         "description": "排紫微斗数本命盘：十二宫干支、五行局、十四主星、六吉六煞、禄存天马与生年四化。",
-        "inputSchema": _schema(
-            {
-                "leap_month": {
-                    "type": "string",
-                    "enum": ["split", "preceding", "following"],
-                    "description": "闰月出生时的生月归属策略，默认 split",
-                }
-            }
-        ),
+        "inputSchema": INPUT_MODELS["ziwei_chart"].model_json_schema(),
     },
     {
         "name": "event_windows",
-        "description": "列出指定年份内命中某结构关系的流月窗口；只返回结构事实，不判吉凶。",
-        "inputSchema": _schema(
-            {
-                "target_year": {"type": "integer"},
-                "relation": {"type": "string", "description": "六冲、六合、三合等结构关系"},
-            }
-        ),
+        "description": "列出指定年份内命中六冲、六合、六害或相破的流月窗口；只返回结构事实，不判吉凶。",
+        "inputSchema": INPUT_MODELS["event_windows"].model_json_schema(),
+    },
+    {
+        "name": "western_chart",
+        "description": "离线计算回归黄道太阳/月亮星座。时间为出生地民用时间；省略 hour 时返回当天候选，不计算上升或宫位。",
+        "inputSchema": INPUT_MODELS["western_chart"].model_json_schema(),
     },
 )
 
@@ -139,7 +105,11 @@ class McpServer:
         return {"content": [{"type": "text", "text": text}]}
 
     def _dispatch(self, name: str | None, args: dict[str, Any]) -> Any:
-        birth = {key: value for key, value in args.items() if key in BIRTH_KEYS}
+        if name not in INPUT_MODELS:
+            raise ValueError(f"未知工具：{name}")
+        request = INPUT_MODELS[name].model_validate(args)
+        birth = request.birth_data()
+        args = request.model_dump()
         if name == "pa_chart":
             return self.service.analyze(birth, "命盘结构").chart
         if name == "analyze":
@@ -157,6 +127,8 @@ class McpServer:
             return self.service.windows(
                 birth, args.get("target_year"), relation=args.get("relation", "六冲")
             )
+        if name == "western_chart":
+            return self.service.western(birth)
         raise ValueError(f"未知工具：{name}")
 
 
