@@ -26,6 +26,8 @@ class BirthInput:
     gender: str | None = None
 
     def __post_init__(self) -> None:
+        if not 1 <= self.year <= 9999:
+            raise ValueError("year 必须在 1 到 9999 之间。")
         try:
             datetime(self.year, self.month, self.day, self.hour, self.minute)
         except ValueError as exc:

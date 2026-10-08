@@ -74,3 +74,20 @@ def test_liu_month_at_resolves_target_date_to_solar_term_period():
 def test_liu_month_at_uses_previous_year_period_before_lichun():
     assert liu_month_at(chart(), date(2026, 1, 2)).solar_term == "大雪"
     assert liu_month_at(chart(), date(2026, 2, 5)).solar_term == "立春"
+
+
+@pytest.mark.parametrize("year,stem", list(zip(range(2024, 2034), "丙戊庚壬甲丙戊庚壬甲", strict=True)))
+def test_liu_month_stems_match_all_year_stems_and_real_charts(year, stem):
+    contexts = liu_month_contexts(chart(), year)
+    assert contexts[0].heavenly_stem == stem
+    for context in contexts:
+        # Five days after the astronomical boundary avoids day-level rounding.
+        import sxtwl
+
+        day = sxtwl.JD2DD(context.start_jd + 5)
+        reference = SxtwlBaziProvider().calculate(
+            BirthInput(day.getYear(), day.getMonth(), day.getDay(), 12)
+        ).pillars[1]
+        assert (context.heavenly_stem, context.earthly_branch) == (
+            reference.heavenly_stem, reference.earthly_branch
+        )
