@@ -12,7 +12,7 @@ from datetime import date
 import sxtwl
 
 from engines.bazi.models import Chart
-from engines.bazi.sxtwl_provider import BRANCH_RELATIONS, branch_relation
+from engines.bazi.sxtwl_provider import BRANCH_RELATIONS
 from engines.bazi.time_engine import liu_month_contexts
 
 RELATION_SOURCE = "地支关系表（算法定义，待流派解释核校）"
@@ -55,7 +55,7 @@ def event_windows(
             dict.fromkeys(
                 (relation, branch)
                 for branch in natal
-                if branch_relation(item.earthly_branch, branch) == relation
+                if frozenset((item.earthly_branch, branch)) in BRANCH_RELATIONS[relation]
             )
         )
         if matched:

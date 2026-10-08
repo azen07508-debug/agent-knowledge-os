@@ -146,13 +146,12 @@ class MingLiService:
         version: str | None = None,
         target_date: str | None = None,
     ) -> AnalysisResponse:
+        if not question.strip():
+            raise ValueError("问题不能为空")
         birth = BirthInput(**birth_data)
         chart = self.calculator.calculate_chart(birth)
         liu_month = self._liu_month(chart, target_date)
         self._validate_selector(school, policy, version)
-        if not question:
-            raise ValueError("问题不能为空")
-
         liu_month_meta = asdict(liu_month) if liu_month is not None else None
         if all(value is None for value in (school, policy, version)):
             return AnalysisResponse(

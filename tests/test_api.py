@@ -1,5 +1,6 @@
 """FastAPI 接口测试。"""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.server import app
@@ -50,3 +51,35 @@ def test_web_index_serves_single_page_console():
     for endpoint in ("/api/chart", "/api/analyze", "/api/ziwei", "/api/windows"):
         assert endpoint in response.text
     assert "school" in response.text and "policy" in response.text
+
+
+@pytest.mark.parametrize("year", [-10**30, 0, 10000, 10**30])
+@pytest.mark.parametrize("method,path,extra", [
+    ("post", "/api/chart", {}),
+    ("post", "/api/analyze", {"question": "事业"}),
+    ("post", "/api/ziwei", {}),
+    ("post", "/api/windows", {"target_year": 2024}),
+    ("put", "/api/memory/invalid-year", {}),
+])
+def test_out_of_range_birth_year_returns_422(year, method, path, extra):
+    response = getattr(client, method)(path, json={**payload(), **extra, "year": year})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("question", ["", " ", "\t\n", "\u3000"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_analyze_rejects_blank_questions(question, explicit):
+    selector = {"school": "classical", "policy": "classical_approx_v1", "version": "1"}
+    response = client.post("/api/analyze", json={
+        **payload(), "gender": "男", "question": question, **(selector if explicit else {}),
+    })
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("question", ["", " ", "\t\n", "\u3000"])
+def test_memory_analyze_rejects_blank_questions_before_profile_lookup(question):
+    response = client.post("/api/memory/missing-blank-question/analyze", json={"question": question})
+
+    assert response.status_code == 422

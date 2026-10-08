@@ -100,3 +100,15 @@ def test_api_rejects_unknown_user_and_partial_selector(memory: Path):
     rejected = client.put("/api/memory/user-1", json={**BIRTH, "school": "classical"})
     assert rejected.status_code == 422
     assert client.put("/api/memory/user-1", json={**BIRTH, "month": 13}).status_code == 422
+
+
+@pytest.mark.parametrize("question", ["", " ", "\t\n", "\u3000"])
+def test_api_rejects_blank_question_without_recording_history(memory: Path, question):
+    saved = client.put("/api/memory/user-1", json=BIRTH)
+    assert saved.status_code == 200
+    before = memory.read_bytes()
+
+    response = client.post("/api/memory/user-1/analyze", json={"question": question})
+
+    assert response.status_code == 422
+    assert memory.read_bytes() == before

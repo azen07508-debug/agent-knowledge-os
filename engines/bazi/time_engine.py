@@ -70,7 +70,7 @@ def liu_month_contexts(chart: Chart, year: int) -> tuple[LiuMonthContext, ...]:
     for jd, index in solar_term_jds(year, year + 1):
         terms.setdefault(index, jd)
     year_stem = STEMS[(year - 4) % 60 % 10]
-    first_stem = ("丙", "戊", "庚", "壬", "甲")[(STEMS.index(year_stem) // 2) % 5]
+    first_stem = ("丙", "戊", "庚", "壬", "甲")[STEMS.index(year_stem) % 5]
     result = []
     for month_index, (term_index, term_name) in enumerate(LIU_MONTH_TERMS):
         stem = STEMS[(STEMS.index(first_stem) + month_index) % 10]

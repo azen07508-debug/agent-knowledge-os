@@ -1,5 +1,6 @@
 """事件窗口查询测试。"""
 
+from dataclasses import replace
 from datetime import date
 from itertools import pairwise
 
@@ -43,7 +44,7 @@ def test_event_windows_list_clash_periods_for_a_year():
 def test_event_windows_filter_by_relation():
     windows = event_windows(chart(), 2024, "六合")
 
-    assert [window.earthly_branch for window in windows] == ["辰", "未", "子"]
+    assert [window.earthly_branch for window in windows] == ["辰", "未", "申", "子"]
 
 
 def test_event_windows_have_ordered_boundaries_and_source():
@@ -72,3 +73,18 @@ def test_api_returns_event_windows():
     body = response.json()
     assert [window["earthly_branch"] for window in body["windows"]] == ["卯", "未", "亥", "子"]
     assert all({"start", "end", "matched"} <= set(window) for window in body["windows"])
+
+
+@pytest.mark.parametrize("natal,flow", [("亥", "寅"), ("寅", "亥"), ("巳", "申"), ("申", "巳")])
+@pytest.mark.parametrize("relation", ["六合", "相破"])
+def test_overlapping_relations_each_produce_a_window(natal, flow, relation):
+    base = chart()
+    synthetic = replace(base, pillars=tuple(
+        replace(pillar, earthly_branch=natal) for pillar in base.pillars
+    ))
+
+    found = [window for window in event_windows(synthetic, 2024, relation)
+             if window.earthly_branch == flow]
+
+    assert len(found) == 1
+    assert found[0].matched == ((relation, natal),)

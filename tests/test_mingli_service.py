@@ -35,6 +35,25 @@ def test_service_rejects_empty_question():
         MingLiService().analyze(birth_data(), "")
 
 
+@pytest.mark.parametrize("question", ["", " ", "\t\n", "\u3000"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_service_rejects_blank_questions_before_chart_calculation(question, explicit, monkeypatch):
+    service = MingLiService()
+    calls = []
+    original = service.calculator.calculate_chart
+
+    def calculate(birth):
+        calls.append(birth)
+        return original(birth)
+
+    monkeypatch.setattr(service.calculator, "calculate_chart", calculate)
+    selector = {"school": "classical", "policy": "classical_approx_v1", "version": "1"}
+
+    with pytest.raises(ValueError, match="问题不能为空"):
+        service.analyze({**birth_data(), "gender": "男"}, question, **(selector if explicit else {}))
+    assert calls == []
+
+
 def test_service_injects_one_registry_into_analyst_and_critic():
     registry = default_registry()
     service = MingLiService(registry)

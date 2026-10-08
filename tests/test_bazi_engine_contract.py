@@ -87,3 +87,14 @@ def test_chart_requires_four_pillars_and_provenance():
 
     with pytest.raises(ValueError, match="provider"):
         Chart(birth(), tuple(Pillar("x", "甲", "子") for _ in range(4)), algorithm_version="1.0")
+
+
+@pytest.mark.parametrize("year", [-10**30, 0, 10000, 10**30])
+def test_birth_input_rejects_out_of_range_year_as_value_error(year):
+    with pytest.raises(ValueError):
+        BirthInput(year, 1, 1, 12)
+
+
+@pytest.mark.parametrize("year", [1, 9999])
+def test_birth_input_accepts_calendar_year_boundaries(year):
+    assert BirthInput(year, 1, 1, 12).year == year
