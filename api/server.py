@@ -5,11 +5,11 @@ from __future__ import annotations
 import hmac
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from runtime.mingli_service import MingLiService
 
@@ -17,7 +17,7 @@ from runtime.mingli_service import MingLiService
 class BirthRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    year: int
+    year: int = Field(ge=1, le=9999)
     month: int
     day: int
     hour: int
@@ -29,7 +29,7 @@ class BirthRequest(BaseModel):
 
 
 class AnalyzeRequest(BirthRequest):
-    question: str = Field(min_length=1)
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     school: str | None = None
     policy: str | None = None
     version: str | None = None
@@ -54,7 +54,7 @@ class MemoryProfileRequest(BirthRequest):
 class MemoryAnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    question: str = Field(min_length=1)
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     target_date: str | None = None
 
 

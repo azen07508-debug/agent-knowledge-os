@@ -50,3 +50,32 @@ def test_web_index_serves_single_page_console():
     for endpoint in ("/api/chart", "/api/analyze", "/api/ziwei", "/api/windows"):
         assert endpoint in response.text
     assert "school" in response.text and "policy" in response.text
+
+
+
+def test_oversized_birth_year_is_rejected_by_all_birth_endpoints():
+    for year in (-10**30, 0, 10000, 10**30):
+        invalid = {**payload(), "year": year}
+        cases = (
+            ("post", "/api/chart", invalid),
+            ("post", "/api/analyze", {**invalid, "question": "事业"}),
+            ("post", "/api/ziwei", invalid),
+            ("post", "/api/windows", {**invalid, "target_year": 2024}),
+            ("put", "/api/memory/audit-invalid", invalid),
+        )
+        for method, path, body in cases:
+            assert getattr(client, method)(path, json=body).status_code == 422
+
+
+def test_blank_questions_are_rejected_with_and_without_strategy():
+    selector = {"school": "classical", "policy": "classical_approx_v1", "version": "1"}
+    for question in ("", " ", "\t\n", "\u3000"):
+        for strategy in ({}, selector):
+            response = client.post("/api/analyze", json={
+                **payload(), "question": question, **strategy,
+            })
+            assert response.status_code == 422
+        # Validation must precede any attempt to load a stored profile.
+        assert client.post("/api/memory/audit-invalid/analyze", json={
+            "question": question,
+        }).status_code == 422

@@ -62,3 +62,15 @@ def test_service_critic_marks_unknown_rule_reference():
 
     assert not critique.passed
     assert any("不存在" in issue for issue in critique.issues)
+
+
+
+def test_service_rejects_whitespace_questions_before_strategy_selection():
+    import pytest
+
+    service = MingLiService()
+    birth = {"year": 1990, "month": 2, "day": 1, "hour": 12}
+    selector = {"school": "classical", "policy": "classical_approx_v1", "version": "1"}
+    for strategy in ({}, selector):
+        with pytest.raises(ValueError, match="问题不能为空"):
+            service.analyze(birth, " \t\n", **strategy)
