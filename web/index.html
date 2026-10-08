@@ -1,323 +1,853 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MingLi Agent · 本地控制台</title>
-<style>
-  :root {
-    --bg: #f7f6f3;
-    --panel: #ffffff;
-    --ink: #1d1c1a;
-    --muted: #6b675f;
-    --line: #e3e0d9;
-    --accent: #1f5f4b;
-    --error: #8a3b12;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  }
-  header {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--line);
-    background: var(--panel);
-  }
-  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
-  header .status { color: var(--muted); font-size: 13px; }
-  main {
-    display: grid;
-    grid-template-columns: minmax(300px, 360px) 1fr;
-    gap: 20px;
-    padding: 20px 24px;
-    align-items: start;
-  }
-  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
-  section {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 16px;
-  }
-  h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--muted); }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  input, select {
-    width: 100%;
-    padding: 7px 8px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: #fff;
-    color: var(--ink);
-    font: inherit;
-  }
-  .field { margin-bottom: 10px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  button {
-    padding: 8px 14px;
-    border: 1px solid var(--accent);
-    border-radius: 6px;
-    background: var(--accent);
-    color: #fff;
-    font: inherit;
-    cursor: pointer;
-  }
-  button.secondary { background: #fff; color: var(--accent); }
-  button:disabled { opacity: .55; cursor: wait; }
-  #result {
-    display: block;
-    min-height: 340px;
-    margin: 0;
-    padding: 14px;
-    background: #16150f;
-    color: #e9e6da;
-    border-radius: 6px;
-    font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-x: auto;
-  }
-  #result.error { color: #ffb59a; }
-  .note { margin-top: 10px; color: var(--muted); font-size: 12px; }
-  .zodiac-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .zodiac-cards article { padding: 12px; background: var(--bg); border-radius: 6px; }
-  .zodiac-cards h3 { margin: 0; font-size: 13px; color: var(--muted); }
-  .zodiac-cards p { margin: 6px 0 0; font-size: 18px; }
-  #western-summary { margin-bottom: 16px; }
-</style>
-</head>
-<body>
-<header>
-  <h1>MingLi Agent · 本地控制台</h1>
-  <span class="status" id="status">检查服务中…</span>
-</header>
-
-<main>
-  <section>
-    <h2>出生信息</h2>
-    <div class="grid">
-      <div><label for="year">年</label><input id="year" type="number" value="1990" min="1" max="9999"></div>
-      <div><label for="month">月</label><input id="month" type="number" value="2" min="1" max="12"></div>
-      <div><label for="day">日</label><input id="day" type="number" value="1" min="1" max="31"></div>
-      <div><label for="hour">时（0-23）</label><input id="hour" type="number" value="12" min="0" max="23"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#fafbf9" />
+    <title>明理 · 见自己，见天地</title>
+    <link rel="stylesheet" href="/assets/app.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <div class="wordmark" aria-label="明理">明 理<span>MING LI</span></div>
+      <main>
+        <section id="daily-view" class="view">
+          <header class="page-header">
+            <div>
+              <h1><span id="greeting">晚上好，</span><br />归藏</h1>
+              <button
+                id="date-toggle"
+                class="date-button"
+                aria-expanded="false"
+              >
+                <span id="today"></span
+                ><img src="/assets/icons/caret-up.svg" alt="" />
+              </button>
+              <p id="date-note" class="muted" hidden>
+                一日一签，给自己片刻留白。
+              </p>
+            </div>
+            <button class="avatar" data-edit aria-label="编辑出生信息">
+              <img src="/assets/rooster.webp" alt="" />
+            </button>
+          </header>
+          <article class="daily-card">
+            <div class="card-top">
+              <span id="day-number" class="day-number">8</span>
+              <div>今日札记<br /><strong>静</strong></div>
+            </div>
+            <h2>静而后能安，<br />安而后能虑。</h2>
+            <p class="quote-source">《礼记 · 大学》</p>
+            <div class="daily-advice">
+              <div>
+                <small>yí</small>
+                <h3>宜</h3>
+                <p>专注一件小事<br />给自己留白<br />早点休息</p>
+              </div>
+              <div>
+                <small>jì</small>
+                <h3>忌</h3>
+                <p>勉强自己<br />被琐事牵走<br />过度消耗</p>
+              </div>
+            </div>
+            <button id="save-note" class="save-note">
+              <span>收藏今日札记</span
+              ><span class="round"
+                ><img src="/assets/icons/bookmark-simple.svg" alt=""
+              /></span>
+            </button>
+          </article>
+          <p class="footnote">生活札记 · 愿你自在，不作吉凶判断</p>
+        </section>
+        <section id="overview-view" class="view" hidden>
+          <header class="page-header">
+            <div>
+              <h1>全貌</h1>
+              <p>登高观全貌，起伏皆风景。</p>
+            </div>
+            <button class="avatar" data-edit aria-label="编辑出生信息">
+              <img src="/assets/rooster.webp" alt="" />
+            </button>
+          </header>
+          <div class="portrait-grid">
+            <article class="portrait bamboo">
+              <div>
+                <h2>八字命盘</h2>
+                <p>四柱与十神，<br />循着结构看自己。</p>
+                <div class="portrait-bottom">
+                  <span>明 理</span><button data-run="chart">查看</button>
+                </div>
+              </div>
+            </article>
+            <article class="portrait horse">
+              <div>
+                <h2>紫微命盘</h2>
+                <p>十二宫与星曜，<br />换一个视角看人生。</p>
+                <div class="portrait-bottom">
+                  <span>明 理</span><button data-run="ziwei">查看</button>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="section-heading">
+            <h2>切片</h2>
+            <p>见微以知著，洞若观火明。</p>
+          </div>
+          <div class="slice-list">
+            <article class="slice">
+              <img class="orb" src="/assets/solar-orb.webp" alt="" />
+              <div>
+                <h3>太阳</h3>
+                <p>认识你的太阳星座</p>
+              </div>
+              <button data-run="western" aria-label="查看太阳星座">查看</button>
+            </article>
+            <article class="slice">
+              <img class="orb" src="/assets/lunar-orb.webp" alt="" />
+              <div>
+                <h3>月亮</h3>
+                <p>从出生时刻，探寻月亮星座</p>
+              </div>
+              <button data-run="western" aria-label="查看月亮星座">查看</button>
+            </article>
+          </div>
+        </section>
+        <section id="chart-view" class="view" hidden>
+          <header class="page-header">
+            <div>
+              <h1>命盘</h1>
+              <p>从一个时刻，认识独一无二的你。</p>
+            </div>
+            <button class="avatar" data-edit aria-label="编辑出生信息">
+              <img src="/assets/rooster.webp" alt="" />
+            </button>
+          </header>
+          <article class="intro-card">
+            <small>你的出生时刻</small>
+            <h2 class="profile-summary">尚未填写</h2>
+            <p>准确的出生时间，让每一份命盘有所依据。</p>
+            <button class="primary" data-edit>
+              填写出生信息 <img src="/assets/icons/arrow-right.svg" alt="" />
+            </button>
+          </article>
+          <div class="section-heading">
+            <h2>循迹</h2>
+            <p>选择你想了解的视角。</p>
+          </div>
+          <div class="action-list">
+            <button data-run="chart">
+              <img src="/assets/icons/yin-yang.svg" alt="" /><span
+                >八字四柱<small>日主、十神与地支关系</small></span
+              ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
+            ><button data-run="ziwei">
+              <img src="/assets/icons/squares-four.svg" alt="" /><span
+                >紫微斗数<small>十二宫、主星与四化</small></span
+              ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
+            ><button data-run="western">
+              <img src="/assets/icons/sun.svg" alt="" /><span
+                >太阳与月亮<small>回归黄道 · 支持仅日期计算</small></span
+              ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
+            ><button data-run="windows">
+              <img src="/assets/icons/calendar-blank.svg" alt="" /><span
+                >流月窗口<small>查看指定年份的结构关系</small></span
+              ><img src="/assets/icons/arrow-up-right.svg" alt="" />
+            </button>
+          </div>
+        </section>
+        <section id="mine-view" class="view" hidden>
+          <header class="page-header">
+            <div>
+              <h1>我的</h1>
+              <p>安顿自己，慢慢来。</p>
+            </div>
+            <img class="avatar" src="/assets/rooster.webp" alt="水墨公鸡" />
+          </header>
+          <article class="intro-card">
+            <small>出生信息</small>
+            <h2 class="profile-summary">尚未填写</h2>
+            <button class="text-link" data-edit>
+              编辑信息
+              <img src="/assets/icons/pencil-simple.svg" alt="" /></button
+            ><button id="forget-profile" class="text-link" hidden>
+              清除本机保存的信息
+            </button>
+          </article>
+          <div class="section-heading">
+            <h2>收藏</h2>
+            <p>留住让你停下来的一句话。</p>
+          </div>
+          <article id="saved-note" class="saved-note muted">
+            还没有收藏。去日签，留住今日的片刻。
+          </article>
+          <p id="status" class="footnote" role="status">正在连接服务…</p>
+        </section>
+        <section id="result-view" class="view" hidden>
+          <button id="back" class="text-link">
+            <img src="/assets/icons/arrow-left.svg" alt="" />返回
+          </button>
+          <header class="page-header">
+            <div>
+              <h1 id="result-title">命盘</h1>
+              <p id="result-subtitle"></p>
+            </div>
+            <button class="avatar" data-edit aria-label="修改出生信息">
+              <img src="/assets/rooster.webp" alt="" />
+            </button>
+          </header>
+          <p id="loading" role="status" hidden>正在循迹，请稍候…</p>
+          <p id="result-error" class="error" role="alert" hidden></p>
+          <div id="readable-result"></div>
+          <div id="western-summary" hidden>
+            <div class="zodiac-cards">
+              <article>
+                <img src="/assets/solar-orb.webp" alt="" /><small
+                  >太阳星座</small
+                >
+                <h2 id="sun-sign"></h2>
+              </article>
+              <article>
+                <img src="/assets/lunar-orb.webp" alt="" /><small
+                  >月亮星座</small
+                >
+                <h2 id="moon-sign"></h2>
+              </article>
+            </div>
+            <p id="western-note" class="muted"></p>
+            <p class="footnote">
+              回归黄道 · 支持 1900–2100 年 · 不计算上升与宫位
+            </p>
+          </div>
+          <details id="raw-details">
+            <summary>计算依据与原始数据</summary>
+            <pre id="result"></pre>
+          </details>
+        </section>
+      </main>
     </div>
-
-    <div class="grid field" style="margin-top:10px">
-      <div><label for="minute">分（0–59）</label><input id="minute" type="number" value="0" min="0" max="59"></div>
-      <div style="grid-column:span 3">
-        <label for="time_precision">出生时间精度</label>
-        <select id="time_precision"><option value="minute">准确到分钟</option><option value="day">只知道日期（仅太阳/月亮星座）</option></select>
+    <nav class="dock" aria-label="主导航">
+      <div class="nav-pill">
+        <button data-tab="daily" aria-current="page">
+          <img src="/assets/icons/calendar-blank.svg" alt="" /><span
+            >日签</span
+          ></button
+        ><button data-tab="chart">
+          <img src="/assets/icons/yin-yang.svg" alt="" /><span
+            >命盘</span
+          ></button
+        ><button data-tab="overview">
+          <img src="/assets/icons/squares-four.svg" alt="" /><span
+            >全貌</span
+          ></button
+        ><button data-tab="mine">
+          <img src="/assets/icons/user-circle.svg" alt="" /><span>我的</span>
+        </button>
       </div>
-    </div>
-    <div class="field">
-      <label for="timezone">出生地时区</label>
-      <input id="timezone" value="Asia/Shanghai" placeholder="例如 America/New_York">
-    </div>
-    <div class="grid field">
-      <div style="grid-column:span 2"><label for="longitude">出生地经度（可选）</label><input id="longitude" type="number" min="-180" max="180" step="any" placeholder="东经为正"></div>
-      <div style="grid-column:span 2"><label for="latitude">出生地纬度（可选）</label><input id="latitude" type="number" min="-90" max="90" step="any" placeholder="北纬为正"></div>
-    </div>
-    <div class="field">
-      <label for="fold">夏令时重复时刻</label>
-      <select id="fold"><option value="">通常无需选择</option><option value="0">前一次</option><option value="1">后一次</option></select>
-    </div>
-
-    <div class="field" style="margin-top:10px">
-      <label for="gender">性别</label>
-      <select id="gender"><option value="">未指定</option><option>男</option><option>女</option></select>
-    </div>
-
-    <div class="field">
-      <label for="question">问题（用于分析与报告）</label>
-      <input id="question" value="事业与财运">
-    </div>
-
-    <div class="field">
-      <label for="school">school（三项留空则只返回结构事实，不跑策略）</label>
-      <input id="school" placeholder="classical">
-    </div>
-    <div class="field">
-      <label for="policy">policy</label>
-      <input id="policy" placeholder="classical_approx_v1">
-    </div>
-    <div class="field">
-      <label for="version">version</label>
-      <input id="version" placeholder="1">
-    </div>
-
-    <div class="field">
-      <label for="apikey">X-API-Key（服务端配置 MINGLI_API_KEY 时必填，仅存在本机浏览器）</label>
-      <input id="apikey" type="password" autocomplete="off" placeholder="未配置则留空">
-    </div>
-
-    <div class="field">
-      <label for="leap_month">紫微闰月归属（leap_month）</label>
-      <select id="leap_month">
-        <option value="split">split · 前半月归本月、后半月归下月</option>
-        <option value="preceding">preceding · 整月归本月</option>
-        <option value="following">following · 整月归下月</option>
-      </select>
-    </div>
-
-    <div class="grid" style="grid-template-columns: 1fr 1fr">
-      <div><label for="target_year">窗口年份</label><input id="target_year" type="number" value="2026" min="1" max="9997"></div>
-      <div>
-        <label for="relation">结构关系</label>
-        <select id="relation"><option>六冲</option><option>六合</option><option>六害</option><option>相破</option></select>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button data-run="chart">排八字</button>
-      <button data-run="analyze" class="secondary">分析</button>
-      <button data-run="ziwei" class="secondary">排紫微</button>
-      <button data-run="western" class="secondary">太阳/月亮星座</button>
-      <button data-run="windows" class="secondary">事件窗口</button>
-    </div>
-    <p class="note">
-      所有计算在本地完成，LLM 不参与排盘；返回值只含结构事实与证据，不含吉凶断语。
-    </p>
-    <p class="note">太阳/月亮星座使用回归黄道，支持 1900–2100 年。仅日期或星座交界存在不确定性时显示候选；本期不计算上升与宫位。</p>
-  </section>
-
-  <section>
-    <h2>结果</h2>
-    <div id="western-summary" hidden>
-      <div class="zodiac-cards">
-        <article><h3>太阳星座</h3><p id="sun-sign"></p></article>
-        <article><h3>月亮星座</h3><p id="moon-sign"></p></article>
-      </div>
-      <p id="western-note" class="note"></p>
-    </div>
-    <pre id="result" role="status" aria-live="polite">选择左侧动作后显示结果。</pre>
-  </section>
-</main>
-
-<script>
-  const $ = (id) => document.getElementById(id);
-  const result = $("result");
-
-  function numberInput(id, optional = false) {
-    const text = $(id).value.trim();
-    if (!text) {
-      if (optional) return null;
-      throw new Error($(id).labels[0].textContent + "不能为空");
-    }
-    const value = Number(text);
-    if (!Number.isFinite(value)) throw new Error("请输入有效数字");
-    return value;
-  }
-
-  function birth(allowUnknown = false) {
-    const unknown = $("time_precision").value === "day";
-    if (unknown && !allowUnknown) throw new Error("此操作需要出生时间；只知道日期时请选择太阳/月亮星座");
-    const timezone = $("timezone").value.trim();
-    if (!timezone) throw new Error("请填写出生地时区");
-    return {
-      year: numberInput("year"),
-      month: numberInput("month"),
-      day: numberInput("day"),
-      hour: unknown ? null : numberInput("hour"),
-      minute: unknown ? 0 : numberInput("minute"),
-      timezone,
-      longitude: numberInput("longitude", true),
-      latitude: numberInput("latitude", true),
-      fold: unknown ? null : numberInput("fold", true),
-      gender: $("gender").value || null,
-    };
-  }
-
-  function selector() {
-    const values = ["school", "policy", "version"].map((key) => $(key).value.trim());
-    const filled = values.filter(Boolean).length;
-    if (filled !== 0 && filled !== 3) throw new Error("school、policy、version 必须同时填写或同时留空");
-    return filled === 3 ? { school: values[0], policy: values[1], version: values[2] } : {};
-  }
-
-  const ACTIONS = {
-    chart: () => ({ path: "/api/chart", body: birth() }),
-    analyze: () => ({
-      path: "/api/analyze",
-      body: { ...birth(), question: $("question").value, ...selector() },
-    }),
-    ziwei: () => ({ path: "/api/ziwei", body: { ...birth(), leap_month: $("leap_month").value } }),
-    western: () => ({ path: "/api/western/chart", body: birth(true) }),
-    windows: () => ({
-      path: "/api/windows",
-      body: { ...birth(), target_year: numberInput("target_year"), relation: $("relation").value },
-    }),
-  };
-
-  async function call(action) {
-    result.classList.remove("error");
-    $("western-summary").hidden = true;
-    let request;
-    try {
-      request = ACTIONS[action]();
-    } catch (error) {
-      result.classList.add("error");
-      result.textContent = "错误：" + error.message;
-      return;
-    }
-
-    document.querySelectorAll("button[data-run]").forEach((button) => (button.disabled = true));
-    result.textContent = "计算中…";
-    try {
-      const headers = { "Content-Type": "application/json" };
-      const key = $("apikey").value.trim();
-      if (key) {
-        headers["X-API-Key"] = key;
-        localStorage.setItem("mingli-api-key", key);
-      }
-      const response = await fetch(request.path, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(request.body),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
-      }
-      result.textContent = JSON.stringify(data, null, 2);
-      if (action === "western") {
-        for (const body of ["sun", "moon"]) {
-          const position = data.chart[body];
-          $(body + "-sign").textContent = position.sign || "可能是 " + position.possible_signs.join(" / ");
+      <button class="ask-button" data-run="analyze">
+        <img src="/assets/icons/chat-circle-dots.svg" alt="" /><span>问事</span>
+      </button>
+    </nav>
+    <dialog id="birth-dialog">
+      <form id="birth-form">
+        <div class="sheet-header">
+          <div>
+            <small>每个时刻，都有来处</small>
+            <h2 id="form-title">出生信息</h2>
+          </div>
+          <button
+            type="button"
+            id="close-dialog"
+            class="icon-button"
+            aria-label="关闭"
+          >
+            <img src="/assets/icons/x.svg" alt="" />
+          </button>
+        </div>
+        <p class="muted">默认数值为示例，请填写自己的信息。</p>
+        <div class="field-grid three">
+          <label
+            >出生年<input
+              id="year"
+              type="number"
+              min="1"
+              max="9999"
+              required
+              value="1990" /></label
+          ><label
+            >月<input
+              id="month"
+              type="number"
+              min="1"
+              max="12"
+              required
+              value="2" /></label
+          ><label
+            >日<input
+              id="day"
+              type="number"
+              min="1"
+              max="31"
+              required
+              value="1"
+          /></label>
+        </div>
+        <label
+          >出生时间<select id="time_precision">
+            <option value="minute">知道出生时刻</option>
+            <option value="day">只知道日期（太阳 / 月亮）</option>
+          </select></label
+        >
+        <div class="field-grid">
+          <label
+            >时<input
+              id="hour"
+              type="number"
+              min="0"
+              max="23"
+              required
+              value="12" /></label
+          ><label
+            >分<input
+              id="minute"
+              type="number"
+              min="0"
+              max="59"
+              required
+              value="0"
+          /></label>
+        </div>
+        <label
+          >出生地时区<input
+            id="timezone"
+            required
+            value="Asia/Shanghai"
+            placeholder="例如 Asia/Shanghai" /></label
+        ><label
+          >性别（选填）<select id="gender">
+            <option value="">不填写</option>
+            <option>男</option>
+            <option>女</option>
+          </select></label
+        >
+        <div id="question-field" hidden>
+          <label
+            >你想了解什么？<textarea
+              id="question"
+              rows="3"
+              placeholder="例如：我想了解自己的命盘结构"
+            >
+命盘结构</textarea
+            >
+          </label>
+          <p class="muted">未选择解读策略时，展示命盘事实。</p>
+        </div>
+        <div id="window-fields" hidden>
+          <div class="field-grid">
+            <label
+              >窗口年份<input
+                id="target_year"
+                type="number"
+                min="1"
+                max="9997"
+                value="2026" /></label
+            ><label
+              >结构关系<select id="relation">
+                <option>六冲</option>
+                <option>六合</option>
+                <option>六害</option>
+                <option>相破</option>
+              </select></label
+            >
+          </div>
+        </div>
+        <details class="advanced">
+          <summary>更多选项</summary>
+          <div class="field-grid">
+            <label
+              >经度（选填）<input
+                id="longitude"
+                type="number"
+                step="any"
+                min="-180"
+                max="180" /></label
+            ><label
+              >纬度（选填）<input
+                id="latitude"
+                type="number"
+                step="any"
+                min="-90"
+                max="90"
+            /></label>
+          </div>
+          <label
+            >夏令时重复时刻<select id="fold">
+              <option value="">自动 / 无重复</option>
+              <option value="0">第一次出现</option>
+              <option value="1">第二次出现</option>
+            </select></label
+          ><label
+            >紫微闰月归属<select id="leap_month">
+              <option value="split">前半月归本月，后半月归下月</option>
+              <option value="preceding">整月归本月</option>
+              <option value="following">整月归下月</option>
+            </select></label
+          ><label
+            >解读流派<input id="school" placeholder="school，选填" /></label
+          ><label
+            >解读策略<input id="policy" placeholder="policy，选填" /></label
+          ><label
+            >策略版本<input id="version" placeholder="version，选填"
+          /></label>
+          <p class="muted">流派、策略、版本需同时填写或同时留空。</p>
+          <label
+            >服务访问密钥<input
+              id="apikey"
+              type="password"
+              autocomplete="off"
+              placeholder="服务配置密钥时填写"
+          /></label>
+        </details>
+        <label class="checkbox"
+          ><input id="remember" type="checkbox" />记住本机出生信息</label
+        >
+        <p id="form-error" role="alert" class="error" hidden></p>
+        <button type="submit" class="primary" id="submit-birth">
+          确认出生信息 <img src="/assets/icons/arrow-right.svg" alt="" />
+        </button>
+      </form>
+    </dialog>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fields = [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "time_precision",
+        "timezone",
+        "longitude",
+        "latitude",
+        "fold",
+        "gender",
+      ];
+      let confirmed = false,
+        pending = null,
+        activeTab = "daily",
+        returnTab = "daily",
+        requestId = 0;
+      const titles = {
+        chart: "八字命盘",
+        ziwei: "紫微命盘",
+        western: "太阳与月亮",
+        windows: "流月窗口",
+        analyze: "问事 · 循迹",
+      };
+      function storeRead(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch {
+          return null;
         }
-        $("western-note").textContent = data.chart.time_precision === "day"
-          ? "按出生地当天完整时间范围计算候选，未补出生时刻。"
-          : "按出生时刻计算；交界落在计算误差范围内时显示相邻候选。";
-        $("western-summary").hidden = false;
       }
-    } catch (error) {
-      result.classList.add("error");
-      result.textContent = "错误：" + error.message;
-    } finally {
-      document.querySelectorAll("button[data-run]").forEach((button) => (button.disabled = false));
-    }
-  }
-
-  document.querySelectorAll("button[data-run]").forEach((button) => {
-    button.addEventListener("click", () => call(button.dataset.run));
-  });
-
-  $("apikey").value = localStorage.getItem("mingli-api-key") || "";
-  $("time_precision").addEventListener("change", () => {
-    const unknown = $("time_precision").value === "day";
-    for (const id of ["hour", "minute", "fold"]) $(id).disabled = unknown;
-    $("western-summary").hidden = true;
-  });
-
-  fetch("/api/health")
-    .then((response) => response.json())
-    .then((data) => ($("status").textContent = `服务正常 · provider ${data.provider}`))
-    .catch(() => ($("status").textContent = "服务不可用"));
-</script>
-</body>
+      function storeWrite(key, value) {
+        try {
+          value === null
+            ? localStorage.removeItem(key)
+            : localStorage.setItem(key, value);
+        } catch {}
+      }
+      function profileLabel() {
+        return `${$("year").value} 年 ${$("month").value} 月 ${$("day").value} 日 · ${$("time_precision").value === "day" ? "时刻未知" : $("hour").value.padStart(2, "0") + ":" + $("minute").value.padStart(2, "0")}`;
+      }
+      function updateProfile() {
+        document
+          .querySelectorAll(".profile-summary")
+          .forEach(
+            (el) => (el.textContent = confirmed ? profileLabel() : "尚未填写"),
+          );
+        $("forget-profile").hidden = !storeRead("mingli-birth");
+      }
+      function switchTab(tab) {
+        activeTab = tab;
+        document
+          .querySelectorAll(".view")
+          .forEach((el) => (el.hidden = el.id !== tab + "-view"));
+        document.querySelectorAll("[data-tab]").forEach((b) => {
+          if (b.dataset.tab === tab) b.setAttribute("aria-current", "page");
+          else b.removeAttribute("aria-current");
+        });
+        window.scrollTo(0, 0);
+      }
+      function openForm(action = null) {
+        pending = action;
+        $("form-title").textContent = action ? titles[action] : "出生信息";
+        $("submit-birth").firstChild.textContent = action
+          ? "确认并查看 "
+          : "确认出生信息 ";
+        $("question-field").hidden = action !== "analyze";
+        $("window-fields").hidden = action !== "windows";
+        $("form-error").hidden = true;
+        $("birth-dialog").showModal();
+      }
+      function numberInput(id, optional = false) {
+        const text = $(id).value.trim();
+        if (!text) {
+          if (optional) return null;
+          throw Error("请填写" + $(id).closest("label").firstChild.textContent);
+        }
+        const n = Number(text);
+        if (!Number.isFinite(n)) throw Error("请输入有效数字");
+        return n;
+      }
+      function birth(allowUnknown = false) {
+        const unknown = $("time_precision").value === "day";
+        if (unknown && !allowUnknown)
+          throw Error("此命盘需要出生时刻；仅日期可查看太阳与月亮。");
+        return {
+          year: numberInput("year"),
+          month: numberInput("month"),
+          day: numberInput("day"),
+          hour: unknown ? null : numberInput("hour"),
+          minute: unknown ? 0 : numberInput("minute"),
+          timezone: $("timezone").value.trim(),
+          longitude: numberInput("longitude", true),
+          latitude: numberInput("latitude", true),
+          fold: unknown ? null : numberInput("fold", true),
+          gender: $("gender").value || null,
+        };
+      }
+      function selector() {
+        const v = ["school", "policy", "version"].map((id) =>
+          $(id).value.trim(),
+        );
+        if (v.some(Boolean) && !v.every(Boolean))
+          throw Error("流派、策略与版本需要同时填写。");
+        return v.every(Boolean)
+          ? { school: v[0], policy: v[1], version: v[2] }
+          : {};
+      }
+      const ACTIONS = {
+        chart: () => ({ path: "/api/chart", body: birth() }),
+        ziwei: () => ({
+          path: "/api/ziwei",
+          body: { ...birth(), leap_month: $("leap_month").value },
+        }),
+        western: () => ({ path: "/api/western/chart", body: birth(true) }),
+        analyze: () => ({
+          path: "/api/analyze",
+          body: { ...birth(), question: $("question").value, ...selector() },
+        }),
+        windows: () => ({
+          path: "/api/windows",
+          body: {
+            ...birth(),
+            target_year: numberInput("target_year"),
+            relation: $("relation").value,
+          },
+        }),
+      };
+      function node(tag, text, cls) {
+        const el = document.createElement(tag);
+        if (text !== undefined) el.textContent = text;
+        if (cls) el.className = cls;
+        return el;
+      }
+      function fact(parent, title, value) {
+        const card = node("article", undefined, "fact-card");
+        card.append(node("small", title), node("h3", value));
+        parent.append(card);
+      }
+      function render(action, data) {
+        const root = $("readable-result");
+        root.replaceChildren();
+        $("western-summary").hidden = action !== "western";
+        if (action === "western") {
+          for (const body of ["sun", "moon"]) {
+            const p = data.chart[body];
+            $(body + "-sign").textContent =
+              p.sign || p.possible_signs.join(" / ");
+          }
+          $("western-note").textContent =
+            data.chart.time_precision === "day"
+              ? "按出生地当天完整时间范围计算。未知时刻不作补填，交界处展示候选星座。"
+              : "按出生时刻计算；接近交界时展示相邻候选星座。";
+          return;
+        }
+        if (action === "chart" || action === "analyze") {
+          const c = action === "chart" ? data : data.chart;
+          root.append(node("p", "日主 · " + c.day_master, "result-lead"));
+          const grid = node("div", undefined, "pillar-grid");
+          for (const p of c.pillars || []) {
+            const names = {
+              year: "年柱",
+              month: "月柱",
+              day: "日柱",
+              hour: "时柱",
+            };
+            const card = node("article", undefined, "pillar");
+            card.append(
+              node("small", names[p.name] || p.name || "四柱"),
+              node("h2", p.heavenly_stem + p.earthly_branch),
+              node("p", p.ten_god || "日主"),
+              node("small", p.na_yin || ""),
+            );
+            grid.append(card);
+          }
+          root.append(grid);
+          if (c.relations?.length) {
+            root.append(node("h2", "地支关系", "result-heading"));
+            for (const r of c.relations)
+              root.append(
+                node(
+                  "p",
+                  typeof r === "string"
+                    ? r
+                    : (r.branches || []).join(" · ") + " · " + r.type,
+                  "relation-line",
+                ),
+              );
+          }
+          if (action === "analyze") {
+            root.append(
+              node("h2", "解读", "result-heading"),
+              node(
+                "p",
+                typeof data.report === "string"
+                  ? data.report
+                  : "当前展示命盘事实。可在更多选项中选择流派、策略及版本，获得对应解读。",
+                "muted",
+              ),
+            );
+          }
+        } else if (action === "ziwei") {
+          const c = data.chart;
+          root.append(
+            node(
+              "p",
+              "五行局 · " + (c.five_element_class || "—"),
+              "result-lead",
+            ),
+          );
+          const grid = node("div", undefined, "palace-grid");
+          for (const p of c.palaces || []) {
+            const card = node("article", undefined, "fact-card");
+            card.append(node("h3", p.name || p.palace_name || "宫位"));
+            const stars = p.major_stars || p.stars || [];
+            card.append(
+              node(
+                "p",
+                Array.isArray(stars)
+                  ? stars
+                      .map((s) =>
+                        typeof s === "string" ? s : s.name || JSON.stringify(s),
+                      )
+                      .join(" · ")
+                  : String(stars),
+              ),
+            );
+            if (p.earthly_branch) card.append(node("small", p.earthly_branch));
+            grid.append(card);
+          }
+          root.append(grid);
+        } else if (action === "windows") {
+          root.append(
+            node(
+              "p",
+              $("target_year").value + " 年 · " + data.relation,
+              "result-lead",
+            ),
+          );
+          if (!data.windows?.length)
+            root.append(
+              node("p", "这一年未找到符合所选关系的时间窗口。", "muted"),
+            );
+          for (const w of data.windows || [])
+            fact(root, w.start + " — " + w.end, w.relation || data.relation);
+        }
+        root.append(
+          node("p", "结构事实供自我探索参考，不作吉凶断语。", "footnote"),
+        );
+      }
+      async function calculate(action) {
+        let req;
+        try {
+          req = ACTIONS[action]();
+        } catch (e) {
+          openForm(action);
+          $("form-error").textContent = e.message;
+          $("form-error").hidden = false;
+          return;
+        }
+        const id = ++requestId;
+        returnTab = activeTab === "result" ? returnTab : activeTab;
+        switchTab("result");
+        $("result-title").textContent = titles[action];
+        $("result-subtitle").textContent = profileLabel();
+        $("readable-result").replaceChildren();
+        $("western-summary").hidden = true;
+        $("result-error").hidden = true;
+        $("raw-details").hidden = true;
+        $("loading").hidden = false;
+        try {
+          const headers = { "Content-Type": "application/json" };
+          if ($("apikey").value.trim())
+            headers["X-API-Key"] = $("apikey").value.trim();
+          const response = await fetch(req.path, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(req.body),
+          });
+          const data = await response.json();
+          if (id !== requestId) return;
+          if (!response.ok)
+            throw Error(
+              typeof data.detail === "string"
+                ? data.detail
+                : Array.isArray(data.detail)
+                  ? data.detail.map((x) => x.msg).join("；")
+                  : "计算失败，请检查出生信息。",
+            );
+          $("result").textContent = JSON.stringify(data, null, 2);
+          $("raw-details").hidden = false;
+          render(action, data);
+        } catch (e) {
+          if (id === requestId) {
+            $("result-error").textContent = e.message;
+            $("result-error").hidden = false;
+            $("result").textContent = e.message;
+          }
+        } finally {
+          if (id === requestId) $("loading").hidden = true;
+        }
+      }
+      document.querySelectorAll("[data-tab]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            requestId++;
+            switchTab(b.dataset.tab);
+          }),
+      );
+      document
+        .querySelectorAll("[data-edit]")
+        .forEach((b) => (b.onclick = () => openForm()));
+      document.querySelectorAll("[data-run]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const action = b.dataset.run;
+            if (!confirmed || action === "analyze" || action === "windows")
+              openForm(action);
+            else calculate(action);
+          }),
+      );
+      $("close-dialog").onclick = () => $("birth-dialog").close();
+      $("back").onclick = () => {
+        requestId++;
+        switchTab(returnTab);
+      };
+      $("time_precision").onchange = () => {
+        for (const id of ["hour", "minute", "fold"])
+          $(id).disabled = $("time_precision").value === "day";
+      };
+      $("birth-form").onsubmit = (e) => {
+        e.preventDefault();
+        try {
+          birth(pending === "western" || pending === null);
+          if (pending === "analyze") {
+            if (!$("question").value.trim())
+              throw Error("请填写你想了解的问题。");
+            selector();
+          }
+          confirmed = true;
+          if ($("remember").checked) {
+            const p = {};
+            for (const f of fields) p[f] = $(f).value;
+            storeWrite("mingli-birth", JSON.stringify(p));
+          } else storeWrite("mingli-birth", null);
+          updateProfile();
+          $("birth-dialog").close();
+          if (pending) calculate(pending);
+        } catch (err) {
+          $("form-error").textContent = err.message;
+          $("form-error").hidden = false;
+        }
+      };
+      $("forget-profile").onclick = () => {
+        storeWrite("mingli-birth", null);
+        confirmed = false;
+        $("remember").checked = false;
+        updateProfile();
+      };
+      try {
+        const p = JSON.parse(storeRead("mingli-birth"));
+        if (p && fields.every((f) => typeof p[f] === "string")) {
+          for (const f of fields) $(f).value = p[f];
+          confirmed = true;
+          $("remember").checked = true;
+          $("time_precision").onchange();
+        }
+      } catch {}
+      updateProfile();
+      function updateSaved() {
+        const saved = storeRead("mingli-note") === "saved";
+        $("save-note").firstElementChild.textContent = saved
+          ? "已收藏今日札记"
+          : "收藏今日札记";
+        $("save-note").setAttribute("aria-pressed", String(saved));
+        $("saved-note").textContent = saved
+          ? "静而后能安，安而后能虑。 ——《礼记 · 大学》"
+          : "还没有收藏。去日签，留住今日的片刻。";
+      }
+      $("save-note").onclick = () => {
+        storeWrite(
+          "mingli-note",
+          storeRead("mingli-note") === "saved" ? null : "saved",
+        );
+        updateSaved();
+      };
+      updateSaved();
+      const now = new Date();
+      const dateParts = new Intl.DateTimeFormat("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      }).format(now);
+      $("today").textContent = dateParts;
+      $("day-number").textContent = new Intl.DateTimeFormat("en", {
+        timeZone: "Asia/Shanghai",
+        day: "numeric",
+      }).format(now);
+      const hour = Number(
+        new Intl.DateTimeFormat("en", {
+          timeZone: "Asia/Shanghai",
+          hour: "numeric",
+          hourCycle: "h23",
+        }).format(now),
+      );
+      $("greeting").textContent =
+        hour < 6
+          ? "夜深了，"
+          : hour < 12
+            ? "早上好，"
+            : hour < 18
+              ? "下午好，"
+              : "晚上好，";
+      $("date-toggle").onclick = () => {
+        const expanded =
+          $("date-toggle").getAttribute("aria-expanded") !== "true";
+        $("date-toggle").setAttribute("aria-expanded", String(expanded));
+        $("date-note").hidden = !expanded;
+      };
+      fetch("/api/health")
+        .then((r) => {
+          if (!r.ok) throw Error();
+          return r.json();
+        })
+        .then(() => ($("status").textContent = "本地计算服务 · 已连接"))
+        .catch(() => ($("status").textContent = "服务暂未连接，请稍后再试。"));
+    </script>
+  </body>
 </html>

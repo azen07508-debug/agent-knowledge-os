@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from runtime.input_models import (
     AnalyzeRequest,
@@ -28,6 +29,7 @@ service = MingLiService()
 app = FastAPI(title="MingLi Agent API", version="0.1.0")
 
 WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+app.mount("/assets", StaticFiles(directory=WEB_INDEX.parent / "assets"), name="assets")
 
 
 @app.exception_handler(RequestValidationError)

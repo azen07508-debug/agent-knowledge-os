@@ -53,6 +53,28 @@ def test_web_index_serves_single_page_console():
     assert "school" in response.text and "policy" in response.text
 
 
+@pytest.mark.parametrize("asset,content_type", [
+    ("app.css", "text/css"),
+    ("daily-glow.webp", "image/webp"),
+    ("bamboo.webp", "image/webp"),
+    ("horse.webp", "image/webp"),
+    ("icons/calendar-blank.svg", "image/svg+xml"),
+    ("fonts/paper-serif.otf", "font/otf"),
+])
+def test_ui_assets_remain_accessible_with_api_auth_enabled(monkeypatch, asset, content_type):
+    monkeypatch.setenv("MINGLI_API_KEY", "test-only-key")
+    response = client.get("/assets/" + asset)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(content_type)
+    assert response.content
+    assert client.post("/api/chart", json=payload()).status_code == 401
+
+
+def test_static_mount_cannot_serve_repository_files():
+    assert client.get("/assets/%2e%2e/%2e%2e/api/server.py").status_code == 404
+
+
 @pytest.mark.parametrize("year", [-10**30, 0, 10000, 10**30])
 @pytest.mark.parametrize("method,path,extra", [
     ("post", "/api/chart", {}),
