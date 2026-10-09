@@ -79,5 +79,12 @@ class WesternChart:
     accuracy_arcminutes: float
     assumptions: tuple[str, ...]
 
+    ascendant: BodyPosition | None = None
+    house_system: str = "whole_sign"
+    houses: tuple[dict[str, Any], ...] = ()
+    planets: tuple[BodyPosition, ...] = ()
+    aspects: tuple[dict[str, Any], ...] = ()
+    unavailable: tuple[str, ...] = ()
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

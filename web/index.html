@@ -148,7 +148,13 @@
               ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
             ><button data-run="western">
               <img src="/assets/icons/sun.svg" alt="" /><span
-                >太阳与月亮<small>回归黄道 · 支持仅日期计算</small></span
+                >完整星盘<small>太阳、月亮、上升 · 宫位与相位</small></span
+              ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
+            ><button data-run="synthesis">
+              <img src="/assets/icons/bookmark-simple.svg" alt="" /><span
+                >交映解读<small
+                  >八字 · 紫微 · 西方星盘，循事实探索自己</small
+                ></span
               ><img src="/assets/icons/arrow-up-right.svg" alt="" /></button
             ><button data-run="windows">
               <img src="/assets/icons/calendar-blank.svg" alt="" /><span
@@ -197,6 +203,12 @@
               <img src="/assets/rooster.webp" alt="" />
             </button>
           </header>
+          <div
+            id="chart-links"
+            class="result-links"
+            hidden
+            aria-label="星盘章节"
+          ></div>
           <p id="loading" role="status" hidden>正在循迹，请稍候…</p>
           <p id="result-error" class="error" role="alert" hidden></p>
           <div id="readable-result"></div>
@@ -217,9 +229,10 @@
             </div>
             <p id="western-note" class="muted"></p>
             <p class="footnote">
-              回归黄道 · 支持 1900–2100 年 · 不计算上升与宫位
+              回归黄道 · 支持 1900–2100 年 · 上升 · 宫位 · 主要相位
             </p>
           </div>
+          <div id="western-detail" hidden></div>
           <details id="raw-details">
             <summary>计算依据与原始数据</summary>
             <pre id="result"></pre>
@@ -331,6 +344,47 @@
             <option>女</option>
           </select></label
         >
+        <label
+          >出生地点<select id="birth_place">
+            <option value="">选择城市，或自行填写经纬度</option>
+            <option value="shanghai">上海</option>
+            <option value="beijing">北京</option>
+            <option value="guangzhou">广州</option>
+            <option value="chengdu">成都</option>
+            <option value="hangzhou">杭州</option>
+            <option value="shenzhen">深圳</option>
+            <option value="hongkong">香港</option>
+            <option value="taipei">台北</option>
+            <option value="london">伦敦</option>
+            <option value="newyork">纽约</option>
+          </select></label
+        >
+        <p class="footnote">
+          城市选项采用市中心近似坐标。上升与宫位需要出生时刻和地点；可改为更准确的经纬度。
+        </p>
+        <div class="field-grid">
+          <label
+            >经度（选填）<input
+              id="longitude"
+              type="number"
+              step="any"
+              min="-180"
+              max="180" /></label
+          ><label
+            >纬度（选填）<input
+              id="latitude"
+              type="number"
+              step="any"
+              min="-90"
+              max="90"
+          /></label>
+        </div>
+        <label
+          >宫位体系<select id="house_system">
+            <option value="whole_sign">整宫制 · 上升星座为第一宫</option>
+            <option value="equal">等宫制 · 从上升点每 30° 一宫</option>
+          </select></label
+        >
         <div id="question-field" hidden>
           <label
             >你想了解什么？<textarea
@@ -341,7 +395,9 @@
 命盘结构</textarea
             >
           </label>
-          <p class="muted">未选择解读策略时，展示命盘事实。</p>
+          <p class="muted">
+            交映解读结合三套体系的事实与象征主题；传统问事仍按所选策略解读。
+          </p>
         </div>
         <div id="window-fields" hidden>
           <div class="field-grid">
@@ -364,23 +420,6 @@
         </div>
         <details class="advanced">
           <summary>更多选项</summary>
-          <div class="field-grid">
-            <label
-              >经度（选填）<input
-                id="longitude"
-                type="number"
-                step="any"
-                min="-180"
-                max="180" /></label
-            ><label
-              >纬度（选填）<input
-                id="latitude"
-                type="number"
-                step="any"
-                min="-90"
-                max="90"
-            /></label>
-          </div>
           <label
             >夏令时重复时刻<select id="fold">
               <option value="">自动 / 无重复</option>
@@ -432,16 +471,19 @@
         "latitude",
         "fold",
         "gender",
+        "house_system",
       ];
       let confirmed = false,
         pending = null,
         activeTab = "daily",
         returnTab = "daily",
-        requestId = 0;
+        requestId = 0,
+        resultAction = null;
       const titles = {
         chart: "八字命盘",
         ziwei: "紫微命盘",
-        western: "太阳与月亮",
+        western: "星空 · 命盘",
+        synthesis: "交映 · 见自己",
         windows: "流月窗口",
         analyze: "问事 · 循迹",
       };
@@ -487,7 +529,7 @@
         $("submit-birth").firstChild.textContent = action
           ? "确认并查看 "
           : "确认出生信息 ";
-        $("question-field").hidden = action !== "analyze";
+        $("question-field").hidden = !["analyze", "synthesis"].includes(action);
         $("window-fields").hidden = action !== "windows";
         $("form-error").hidden = true;
         $("birth-dialog").showModal();
@@ -535,7 +577,19 @@
           path: "/api/ziwei",
           body: { ...birth(), leap_month: $("leap_month").value },
         }),
-        western: () => ({ path: "/api/western/chart", body: birth(true) }),
+        western: () => ({
+          path: "/api/western/chart",
+          body: { ...birth(true), house_system: $("house_system").value },
+        }),
+        synthesis: () => ({
+          path: "/api/synthesis",
+          body: {
+            ...birth(true),
+            house_system: $("house_system").value,
+            question: $("question").value,
+            leap_month: $("leap_month").value,
+          },
+        }),
         analyze: () => ({
           path: "/api/analyze",
           body: { ...birth(), question: $("question").value, ...selector() },
@@ -560,9 +614,261 @@
         card.append(node("small", title), node("h3", value));
         parent.append(card);
       }
+      const BODY_NAMES = {
+        sun: "太阳",
+        moon: "月亮",
+        mercury: "水星",
+        venus: "金星",
+        mars: "火星",
+        jupiter: "木星",
+        saturn: "土星",
+        uranus: "天王星",
+        neptune: "海王星",
+        pluto: "冥王星",
+        ascendant: "上升",
+      };
+      const HOUSE_THEMES = [
+        "自我与起点",
+        "资源与价值",
+        "交流与学习",
+        "家庭与根基",
+        "创造与表达",
+        "日常与照顾",
+        "合作与关系",
+        "共享与转变",
+        "视野与意义",
+        "事业与角色",
+        "群体与愿景",
+        "独处与内在",
+      ];
+      function degree(value) {
+        return Number(value).toFixed(2) + "°";
+      }
+      function renderWestern(chart) {
+        const root = $("western-detail");
+        root.replaceChildren();
+        const heading = node("div", undefined, "section-heading");
+        heading.append(
+          node("h2", "此刻的入口"),
+          node("p", "上升 · 你与世界相遇的方式"),
+        );
+        root.append(heading);
+        const rising = node("article", undefined, "intro-card");
+        if (chart.ascendant) {
+          const a = chart.ascendant;
+          rising.append(
+            node("small", "上升星座"),
+            node("h2", a.sign || a.possible_signs.join(" / ")),
+            node(
+              "p",
+              "黄经 " +
+                degree(a.longitude_deg) +
+                " · 星座内 " +
+                degree(a.degree_in_sign),
+            ),
+          );
+        } else
+          rising.append(
+            node("h2", "还缺一点来处"),
+            node("p", chart.unavailable[0] || "请补充出生时刻与地点。"),
+          );
+        const edit = node("button", "补充 / 修改出生信息", "text-link");
+        edit.onclick = () => openForm("western");
+        rising.append(edit);
+        root.append(rising);
+        rising.id = "ascendant-section";
+        const links = $("chart-links");
+        links.replaceChildren();
+        for (const [id, label] of [
+          ["ascendant-section", "上升"],
+          ["planet-list", "行星"],
+          ["house-list", "宫位"],
+          ["aspect-list", "相位"],
+        ]) {
+          const link = node("button", label);
+          link.onclick = () =>
+            $(id).scrollIntoView({ behavior: "smooth", block: "start" });
+          links.append(link);
+        }
+
+        const positions = node("section", undefined, "western-section");
+        positions.id = "planet-list";
+        positions.append(
+          node("h2", "星辰落处", "result-heading"),
+          node("p", "地心位置 · 回归黄道", "muted"),
+        );
+        if (chart.time_precision === "day")
+          positions.append(
+            node(
+              "p",
+              "出生时刻未知，只保留太阳与月亮的全天候选，不生成其他行星精确位置。",
+              "empty-note",
+            ),
+          );
+        else {
+          const list = node("div", undefined, "position-list");
+          for (const p of [chart.sun, chart.moon, ...chart.planets]) {
+            const row = node("article");
+            row.append(
+              node("h3", BODY_NAMES[p.body]),
+              node("p", p.sign || p.possible_signs.join(" / ")),
+              node("small", degree(p.degree_in_sign)),
+            );
+            list.append(row);
+          }
+          positions.append(list);
+        }
+        root.append(positions);
+        const homes = node("section", undefined, "western-section");
+        homes.id = "house-list";
+        homes.append(
+          node("h2", "十二间房", "result-heading"),
+          node(
+            "p",
+            chart.house_system === "equal"
+              ? "等宫制 · 从上升点起，每宫 30°"
+              : "整宫制 · 上升所在星座为第一宫，每宫一个完整星座",
+            "muted",
+          ),
+        );
+        if (!chart.houses.length)
+          homes.append(
+            node("p", "准确出生时刻和经纬度齐备后，才展示宫位。", "empty-note"),
+          );
+        else {
+          const grid = node("div", undefined, "house-grid");
+          for (const h of chart.houses) {
+            const card = node("article", undefined, "fact-card");
+            card.append(
+              node(
+                "small",
+                `第 ${h.number} 宫 · ${HOUSE_THEMES[h.number - 1]}`,
+              ),
+              node("h3", h.sign),
+              node("p", "宫头 " + degree(h.degree_in_sign)),
+              node(
+                "p",
+                h.bodies.length
+                  ? h.bodies.map((b) => BODY_NAMES[b]).join(" · ")
+                  : "未落入已计算天体",
+                "muted",
+              ),
+            );
+            grid.append(card);
+          }
+          homes.append(grid);
+        }
+        root.append(homes);
+        const angles = node("section", undefined, "western-section");
+        angles.id = "aspect-list";
+        angles.append(
+          node("h2", "彼此的角度", "result-heading"),
+          node(
+            "p",
+            "主要相位 · 日月容许度 8°，其余 6°；不判断入相或出相",
+            "muted",
+          ),
+        );
+        if (!chart.aspects.length)
+          angles.append(
+            node(
+              "p",
+              chart.time_precision === "day"
+                ? "未知出生时刻，不生成精确相位。"
+                : "当前容许度内没有主要相位。",
+              "empty-note",
+            ),
+          );
+        for (const a of chart.aspects) {
+          const row = node("article", undefined, "aspect-row");
+          row.append(
+            node("h3", a.bodies.map((b) => BODY_NAMES[b]).join(" · ")),
+            node("p", a.name + " " + a.angle_deg + "°"),
+            node(
+              "small",
+              "角距 " +
+                degree(a.separation_deg) +
+                " · 容许度差 " +
+                degree(a.orb_deg),
+            ),
+          );
+          angles.append(row);
+        }
+        root.append(angles);
+        root.append(
+          node(
+            "p",
+            "上升对出生时间和地点敏感。宫位主题与相位解释属于象征语言，计算角度本身不代表吉凶。",
+            "footnote",
+          ),
+        );
+      }
+      function renderSynthesis(data, root) {
+        const c = data.charts,
+          i = data.interpretation;
+        root.append(node("p", "你想探索：" + i.question, "muted"));
+        const intro = node("article", undefined, "synthesis-intro");
+        intro.append(
+          node("small", "三面镜子 · 同一个你"),
+          node("h2", "见自己，也留余地"),
+          node("p", i.summary),
+        );
+        root.append(intro);
+        const strip = node("div", undefined, "system-strip");
+        for (const [label, text] of [
+          [
+            "八字",
+            c.bazi
+              ? c.bazi.day_master + " · " + c.bazi.elements.day_master_element
+              : "时刻待补",
+          ],
+          [
+            "紫微",
+            c.ziwei
+              ? c.ziwei.palaces[c.ziwei.soul_index].heavenly_stem +
+                c.ziwei.palaces[c.ziwei.soul_index].earthly_branch
+              : "时刻待补",
+          ],
+          ["星盘", c.western.sun.sign || "太阳有候选"],
+        ]) {
+          const card = node("article");
+          card.append(node("small", label), node("h3", text));
+          strip.append(card);
+        }
+        root.append(strip);
+        for (const theme of i.themes) {
+          const card = node("article", undefined, "theme-card");
+          card.append(
+            node("h2", theme.title),
+            node("p", theme.prompt, "reflection"),
+          );
+          for (const r of theme.readings) {
+            const reading = node("div", undefined, "system-reading");
+            reading.append(node("small", r.system), node("p", r.text));
+            const refs = r.evidence_ids
+              .map((id) => i.evidence.find((e) => e.id === id)?.fact)
+              .filter(Boolean);
+            reading.append(
+              node("p", "依据：" + refs.join("；"), "evidence-note"),
+            );
+            card.append(reading);
+          }
+          root.append(card);
+        }
+        const evidence = node("details", undefined, "evidence-details");
+        evidence.append(node("summary", "这份解读从哪里来"));
+        for (const e of i.evidence)
+          evidence.append(node("p", e.system + " · " + e.fact));
+        root.append(evidence);
+        for (const note of [...i.unavailable, ...i.limits])
+          root.append(node("p", note, "footnote"));
+      }
+
       function render(action, data) {
         const root = $("readable-result");
         root.replaceChildren();
+        $("western-detail").hidden = action !== "western";
+        $("chart-links").hidden = action !== "western";
         $("western-summary").hidden = action !== "western";
         if (action === "western") {
           for (const body of ["sun", "moon"]) {
@@ -574,6 +880,11 @@
             data.chart.time_precision === "day"
               ? "按出生地当天完整时间范围计算。未知时刻不作补填，交界处展示候选星座。"
               : "按出生时刻计算；接近交界时展示相邻候选星座。";
+          renderWestern(data.chart);
+          return;
+        }
+        if (action === "synthesis") {
+          renderSynthesis(data, root);
           return;
         }
         if (action === "chart" || action === "analyze") {
@@ -681,6 +992,7 @@
           $("form-error").hidden = false;
           return;
         }
+        resultAction = action;
         const id = ++requestId;
         returnTab = activeTab === "result" ? returnTab : activeTab;
         switchTab("result");
@@ -688,6 +1000,8 @@
         $("result-subtitle").textContent = profileLabel();
         $("readable-result").replaceChildren();
         $("western-summary").hidden = true;
+        $("western-detail").hidden = true;
+        $("chart-links").hidden = true;
         $("result-error").hidden = true;
         $("raw-details").hidden = true;
         $("loading").hidden = false;
@@ -732,12 +1046,19 @@
       );
       document
         .querySelectorAll("[data-edit]")
-        .forEach((b) => (b.onclick = () => openForm()));
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              openForm(b.closest("#result-view") ? resultAction : null)),
+        );
       document.querySelectorAll("[data-run]").forEach(
         (b) =>
           (b.onclick = () => {
             const action = b.dataset.run;
-            if (!confirmed || action === "analyze" || action === "windows")
+            if (
+              !confirmed ||
+              ["analyze", "synthesis", "windows"].includes(action)
+            )
               openForm(action);
             else calculate(action);
           }),
@@ -747,6 +1068,30 @@
         requestId++;
         switchTab(returnTab);
       };
+      const PLACES = {
+        shanghai: [121.4737, 31.2304, "Asia/Shanghai"],
+        beijing: [116.4074, 39.9042, "Asia/Shanghai"],
+        guangzhou: [113.2644, 23.1291, "Asia/Shanghai"],
+        chengdu: [104.0665, 30.5728, "Asia/Shanghai"],
+        hangzhou: [120.1551, 30.2741, "Asia/Shanghai"],
+        shenzhen: [114.0579, 22.5431, "Asia/Shanghai"],
+        hongkong: [114.1694, 22.3193, "Asia/Hong_Kong"],
+        taipei: [121.5654, 25.033, "Asia/Taipei"],
+        london: [-0.1276, 51.5072, "Europe/London"],
+        newyork: [-74.006, 40.7128, "America/New_York"],
+      };
+      $("birth_place").onchange = () => {
+        const p = PLACES[$("birth_place").value];
+        if (p) {
+          $("longitude").value = p[0];
+          $("latitude").value = p[1];
+          $("timezone").value = p[2];
+          $("fold").value = "";
+        }
+      };
+      $("longitude").oninput = $("latitude").oninput = () => {
+        $("birth_place").value = "";
+      };
       $("time_precision").onchange = () => {
         for (const id of ["hour", "minute", "fold"])
           $(id).disabled = $("time_precision").value === "day";
@@ -754,11 +1099,11 @@
       $("birth-form").onsubmit = (e) => {
         e.preventDefault();
         try {
-          birth(pending === "western" || pending === null);
-          if (pending === "analyze") {
+          birth(["western", "synthesis", null].includes(pending));
+          if (["analyze", "synthesis"].includes(pending)) {
             if (!$("question").value.trim())
               throw Error("请填写你想了解的问题。");
-            selector();
+            if (pending === "analyze") selector();
           }
           confirmed = true;
           if ($("remember").checked) {
@@ -782,8 +1127,14 @@
       };
       try {
         const p = JSON.parse(storeRead("mingli-birth"));
-        if (p && fields.every((f) => typeof p[f] === "string")) {
-          for (const f of fields) $(f).value = p[f];
+        if (
+          p &&
+          fields
+            .filter((f) => f !== "house_system")
+            .every((f) => typeof p[f] === "string")
+        ) {
+          for (const f of fields)
+            if (typeof p[f] === "string") $(f).value = p[f];
           confirmed = true;
           $("remember").checked = true;
           $("time_precision").onchange();

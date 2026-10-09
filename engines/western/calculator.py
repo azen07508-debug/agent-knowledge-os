@@ -1,4 +1,4 @@
-"""日月落座与未知时间的候选范围；不输出上升、宫位或吉凶解释。"""
+"""离线日月、行星、上升、宫位与相位；未知时刻不补填。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 from engines.birth_time import calendar_datetime, local_day_interval, local_time_to_utc
+from engines.western.geometry import ascendant, aspects, houses
 from engines.western.models import SIGN_NAMES, SIGNS, BodyPosition, WesternBirthInput, WesternChart
 from engines.western.provider import AstronomyEngineProvider
 
@@ -53,9 +54,13 @@ class WesternCalculator:
     def __init__(self, provider: WesternProvider | None = None) -> None:
         self.provider = provider if provider is not None else AstronomyEngineProvider()
 
-    def calculate(self, birth: WesternBirthInput) -> WesternChart:
+    def calculate(
+        self, birth: WesternBirthInput, *, house_system: str = "whole_sign"
+    ) -> WesternChart:
         if not isinstance(birth, WesternBirthInput):
             raise TypeError("birth 必须是 WesternBirthInput。")
+        if house_system not in ("whole_sign", "equal"):
+            raise ValueError("宫制仅支持 whole_sign（整宫制）或 equal（等宫制）。")
         provider = self.provider
         if not provider.name or not provider.algorithm_version:
             raise ValueError("provider 必须声明名称和算法版本。")
@@ -80,6 +85,28 @@ class WesternCalculator:
             utc_interval = (start.isoformat(), end.isoformat())
         values = [provider.longitudes(instant) for instant in instants]
         tolerance = provider.accuracy_arcminutes / 60
+        positions = {"sun": values[0][0], "moon": values[0][1]} if exact else {}
+        planets = ()
+        if exact and hasattr(provider, "planet_longitudes"):
+            extra = provider.planet_longitudes(instants[0])
+            planets = tuple(
+                _position(body, [value], tolerance, True) for body, value in extra.items()
+            )
+            positions.update(extra)
+        rising = None
+        house_rows = ()
+        unavailable = []
+        if exact and birth.longitude is not None and birth.latitude is not None:
+            try:
+                angle = ascendant(instants[0], birth.longitude, birth.latitude)
+                rising = _position("ascendant", [angle], tolerance, True)
+                house_rows = houses(angle, house_system, positions)
+            except ValueError as error:
+                unavailable.append(str(error))
+        else:
+            unavailable.append("上升与宫位需要准确出生时刻及出生地经纬度。")
+        if not exact:
+            unavailable.append("出生时刻未知，不计算行星精确位置、宫位与相位。")
         return WesternChart(
             birth=birth,
             sun=_position("sun", [pair[0] for pair in values], tolerance, exact),
@@ -93,12 +120,20 @@ class WesternCalculator:
             coordinate_frame="geocentric_true_ecliptic_of_date",
             time_model="UTC approximated as UT1; TT via Espenak-Meeus DeltaT",
             accuracy_arcminutes=provider.accuracy_arcminutes,
+            ascendant=rising,
+            house_system=house_system,
+            houses=house_rows,
+            planets=planets,
+            aspects=aspects(positions) if exact else (),
+            unavailable=tuple(unavailable),
             assumptions=(
                 "回归黄道：春分点起，每 30° 为一个星座；不按固定公历日期表判断。",
                 "地心日月位置；不使用出生地视差，不应用八字真太阳时修正。",
                 "UTC 近似 UT1；TT 使用 Espenak-Meeus ΔT 估算。未来 ΔT 的不确定性不包含在标称 1 角分位置误差内。",
+                "主要相位为合、六合、刑、拱、冲；涉及日月容许度 8°，其余行星 6°，不判断入相/出相。",
+                "上升精度取决于出生时刻及地点；行星位置的 1 角分误差不能当作上升精度保证。",
                 "星座交界在计算误差范围内时返回相邻候选，不强行判定。",
                 "仅日期输入按当地民用日每 30 分钟及结束前一瞬计算候选，不补出生时刻。",
-                "首期范围 1900–2100 年；不含上升、宫位、相位或解释性结论。",
+                "支持 1900–2100 年；宫制为明确选择的整宫制或等宫制，不视为 Placidus。",
             ),
         )

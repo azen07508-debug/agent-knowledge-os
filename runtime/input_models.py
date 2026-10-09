@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -39,6 +39,7 @@ class BirthRequest(BirthFields):
 
 
 class WesternRequest(BirthFields):
+    house_system: Literal["whole_sign", "equal"] = "whole_sign"
     year: int = Field(strict=True, ge=1900, le=2100)
     hour: int | None = Field(default=None, strict=True, ge=0, le=23)
 
@@ -76,3 +77,8 @@ class MemoryAnalyzeRequest(BaseModel):
 
     question: Question
     target_date: str | None = None
+
+
+class SynthesisRequest(WesternRequest):
+    question: Question = "我想了解自己的表达、行动与生活节奏"
+    leap_month: Literal["split", "preceding", "following"] = "split"

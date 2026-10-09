@@ -89,10 +89,33 @@ class MingLiService:
         chart = self.ziwei_calculator.calculate(birth_data, leap_month=leap_month)
         return {"chart": chart.to_dict()}
 
-    def western(self, birth_data: dict[str, Any]) -> dict[str, Any]:
-        """离线太阳/月亮星座；未知出生时间返回当地民用日内的候选。"""
-        chart = self.western_calculator.calculate(WesternBirthInput(**birth_data))
+    def western(self, birth_data: dict[str, Any], *, house_system: str = "whole_sign") -> dict[str, Any]:
+        """离线星盘；未知时刻只返回日月候选，地点缺失不生成宫位。"""
+        chart = self.western_calculator.calculate(
+            WesternBirthInput(**birth_data), house_system=house_system
+        )
         return {"chart": chart.to_dict()}
+
+    def synthesis(
+        self, birth_data: dict[str, Any], *, question: str,
+        house_system: str = "whole_sign", leap_month: str = "split",
+    ) -> dict[str, Any]:
+        from engines.synthesis import explain
+
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError("请填写你想探索的问题。")
+        western = self.western(birth_data, house_system=house_system)["chart"]
+        bazi = ziwei = None
+        unavailable = list(western["unavailable"])
+        if birth_data.get("hour") is None:
+            unavailable.append("未知出生时刻：八字、紫微暂不排盘，保留太阳/月亮候选。")
+        else:
+            bazi = self.calculator.calculate_chart(BirthInput(**birth_data)).to_dict()
+            ziwei = self.ziwei(birth_data, leap_month=leap_month)["chart"]
+        return {
+            "charts": {"bazi": bazi, "ziwei": ziwei, "western": western},
+            "interpretation": explain(question.strip(), bazi, ziwei, western, unavailable),
+        }
 
     def save_profile(
         self,

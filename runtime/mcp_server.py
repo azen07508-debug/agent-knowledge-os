@@ -13,6 +13,7 @@ from typing import Any
 from runtime.input_models import (
     AnalyzeRequest,
     BirthRequest,
+    SynthesisRequest,
     WesternRequest,
     WindowsRequest,
     ZiweiRequest,
@@ -27,10 +28,16 @@ INPUT_MODELS = {
     "ziwei_chart": ZiweiRequest,
     "event_windows": WindowsRequest,
     "western_chart": WesternRequest,
+    "synthesis": SynthesisRequest,
 }
 
 
 TOOLS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "synthesis",
+        "description": "跨体系事实与可追溯的象征解读，未知时刻不补排八字或紫微。",
+        "inputSchema": INPUT_MODELS["synthesis"].model_json_schema(),
+    },
     {
         "name": "pa_chart",
         "description": "按公历出生时间排八字命盘，返回四柱、十神、纳音、藏干与结构关系等确定性事实，不作吉凶判断。",
@@ -53,7 +60,7 @@ TOOLS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "western_chart",
-        "description": "离线计算回归黄道太阳/月亮星座。时间为出生地民用时间；省略 hour 时返回当天候选，不计算上升或宫位。",
+        "description": "离线计算回归黄道太阳/月亮星座。时间为出生地民用时间；省略 hour 时返回当天候选；准确时刻与经纬度可计算上升、整宫/等宫，准确时刻可计算主要相位。",
         "inputSchema": INPUT_MODELS["western_chart"].model_json_schema(),
     },
 )
@@ -127,8 +134,13 @@ class McpServer:
             return self.service.windows(
                 birth, args.get("target_year"), relation=args.get("relation", "六冲")
             )
+        if name == "synthesis":
+            return self.service.synthesis(
+                birth, question=request.question,
+                house_system=request.house_system, leap_month=request.leap_month,
+            )
         if name == "western_chart":
-            return self.service.western(birth)
+            return self.service.western(birth, house_system=request.house_system)
         raise ValueError(f"未知工具：{name}")
 
 

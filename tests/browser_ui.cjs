@@ -1,6 +1,6 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
-const baseURL = process.env.MINGLI_UI_URL || "http://127.0.0.1:8022";
+const baseURL = process.env.MINGLI_UI_URL || "http://127.0.0.1:8023";
 (async () => {
   const browser = await chromium.launch({
     executablePath: "/usr/bin/chromium",

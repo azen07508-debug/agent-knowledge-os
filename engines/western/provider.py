@@ -10,7 +10,7 @@ import astronomy
 
 class AstronomyEngineProvider:
     name = "astronomy-engine"
-    algorithm_version = f"astronomy-engine-{version('astronomy-engine')}-western-v1"
+    algorithm_version = f"astronomy-engine-{version('astronomy-engine')}-western-v2"
     accuracy_arcminutes = 1.0
 
     def longitudes(self, instant: datetime) -> tuple[float, float]:
@@ -19,7 +19,23 @@ class AstronomyEngineProvider:
             raise ValueError("instant 必须包含时区。")
         instant = instant.astimezone(UTC)
         time = astronomy.Time.Make(
-            instant.year, instant.month, instant.day, instant.hour, instant.minute,
+            instant.year,
+            instant.month,
+            instant.day,
+            instant.hour,
+            instant.minute,
             instant.second + instant.microsecond / 1_000_000,
         )
         return astronomy.SunPosition(time).elon, astronomy.EclipticGeoMoon(time).lon
+
+    def planet_longitudes(self, instant: datetime) -> dict[str, float]:
+        from engines.western.geometry import astro_time
+
+        time = astro_time(instant)
+        names = ("Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto")
+        return {
+            name.lower(): astronomy.Ecliptic(
+                astronomy.GeoVector(getattr(astronomy.Body, name), time, True)
+            ).elon
+            for name in names
+        }

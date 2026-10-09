@@ -1,4 +1,4 @@
-"""西方占星事实层：回归黄道的太阳、月亮星座。"""
+"""西方占星事实层：回归黄道日月、行星、上升、整宫/等宫与主要相位。"""
 
 from engines.western.calculator import WesternCalculator
 from engines.western.models import WesternBirthInput, WesternChart

@@ -19,6 +19,7 @@ from runtime.input_models import (
     BirthRequest,
     MemoryAnalyzeRequest,
     MemoryProfileRequest,
+    SynthesisRequest,
     WesternRequest,
     WindowsRequest,
     ZiweiRequest,
@@ -99,10 +100,21 @@ def ziwei(request: ZiweiRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.post("/api/synthesis")
+def synthesis(request: SynthesisRequest) -> dict[str, Any]:
+    try:
+        return service.synthesis(
+            request.birth_data(), question=request.question,
+            house_system=request.house_system, leap_month=request.leap_month,
+        )
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @app.post("/api/western/chart")
 def western_chart(request: WesternRequest) -> dict[str, Any]:
     try:
-        return service.western(request.birth_data())
+        return service.western(request.birth_data(), house_system=request.house_system)
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

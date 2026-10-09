@@ -41,12 +41,12 @@ def test_initialized_notification_gets_no_response():
     assert server.handle(message) is None
 
 
-def test_tools_list_exposes_the_five_public_operations():
+def test_tools_list_exposes_the_six_public_operations():
     server = McpServer()
     tools = request(server, "tools/list")["result"]["tools"]
     by_name = {tool["name"]: tool for tool in tools}
 
-    assert set(by_name) == {"pa_chart", "analyze", "ziwei_chart", "event_windows", "western_chart"}
+    assert set(by_name) == {"pa_chart", "analyze", "ziwei_chart", "event_windows", "western_chart", "synthesis"}
     for tool in tools:
         assert tool["description"]
         assert tool["inputSchema"]["type"] == "object"
